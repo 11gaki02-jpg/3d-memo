@@ -1,0 +1,4030 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>新しいメモ帳 v12 3D版 画像削除強修正版</title>
+<style>
+:root{
+  --bg:#ffffff; --paper:#fff8bd; --paper2:#ffffff; --line:#e6e6e6;
+  --bar:#ffffff; --text:#111; --muted:#6d6550; --accent:#009688;
+  --editor-font-size:1.55rem; --editor-line-height:42px;
+  --pink:#ffeef4; --blue:#eef5ff; --green:#effaf1; --white:#ffffff;
+  --shadow:0 8px 24px rgba(0,0,0,.18);
+  --safe-t:env(safe-area-inset-top,0px); --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;width:100%;min-width:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP","Hiragino Kaku Gothic ProN",Meiryo,sans-serif;background:#ddd;color:var(--text);-webkit-text-size-adjust:100%;text-size-adjust:100%}
+button,input,textarea,select{font:inherit}
+.app{height:100dvh;width:100%!important;min-width:100%!important;max-width:100%!important;margin:0;background:var(--bg);display:flex;flex-direction:column;position:relative;overflow:hidden}
+.top{padding:calc(var(--safe-t) + 10px) 14px 10px;background:#f5dc51;display:flex;align-items:center;gap:10px;box-shadow:0 1px 0 rgba(0,0,0,.08);z-index:5}
+.logo{font-size:2rem;line-height:1}
+.brand{font-size:1.65rem;font-weight:600;letter-spacing:-.04em;color:#333;flex:1}
+.brand small{font-size:.7rem;color:#666;margin-left:3px;font-weight:500}
+.iconbtn{border:none;background:transparent;font-size:1.65rem;line-height:1;padding:5px 8px;border-radius:12px;color:#222}
+.iconbtn:active{background:rgba(0,0,0,.08);transform:scale(.96)}
+.toolbar{display:none!important;align-items:center;gap:8px;padding:8px;background:#eee;border-top:1px solid rgba(0,0,0,.08);border-bottom:1px solid rgba(0,0,0,.12)}
+.sortbox{flex:1;background:#fafafa;border:1px solid #ddd;border-radius:2px;text-align:center;padding:8px 12px;font-size:1.05rem;font-weight:600;color:#222}
+.searchbox{display:none;flex:1;background:#fff;border:1px solid #d7c95f;border-radius:10px;padding:8px 10px;align-items:center;gap:6px}
+.searchbox input{border:none;outline:none;background:transparent;flex:1;font-size:1rem}
+.screen{display:none;flex:1;overflow:hidden}
+.screen.active{display:flex;flex-direction:column}
+.scroll{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;padding-bottom:92px}
+.note-list{padding:14px 12px 96px;display:flex;flex-direction:column;gap:12px}
+.note-swipe{position:relative;border-radius:24px;overflow:hidden;touch-action:pan-y;background:#e9edf2;box-shadow:0 8px 18px rgba(0,0,0,.08);min-width:0;user-select:none;-webkit-user-select:none}
+.note-card{min-height:62px;width:100%;background:var(--paper);border:1px solid rgba(0,0,0,.08);border-radius:24px;display:flex;align-items:center;padding:14px 18px;gap:10px;cursor:pointer;position:relative;z-index:2;box-shadow:0 8px 18px rgba(0,0,0,.08);overflow:hidden;transform:translateX(var(--note-swipe-x,0px));transition:transform .18s ease, filter .12s ease, opacity .12s ease}
+.note-actions{position:absolute;z-index:1;top:0;right:0;bottom:0;width:168px;display:grid;grid-template-columns:repeat(2,1fr);border-radius:0 24px 24px 0;overflow:hidden}
+.note-actions button{border:none;color:#fff;font-size:.82rem;font-weight:900;display:flex;flex-direction:column;gap:4px;align-items:center;justify-content:center}
+.note-actions button span{font-size:1.35rem;line-height:1}
+.note-actions button.move{background:#4b8fe8}
+.note-actions button.delete{background:#ef4d45}
+.note-swipe.open .note-card{--note-swipe-x:-168px}
+.note-swipe.open{box-shadow:0 10px 24px rgba(40,40,60,.16)}
+.note-swipe.reordering{z-index:25;touch-action:none;box-shadow:0 14px 28px rgba(0,0,0,.22)}
+.note-swipe.reordering .note-card{opacity:.86;outline:3px solid var(--accent);outline-offset:-3px;transform:scale(.98)}
+.note-reorder-mode .note-swipe:not(.reordering) .note-card{transition:transform .12s ease, opacity .12s ease;opacity:.72}
+.note-card.pink{background:var(--pink)}
+.note-card.blue{background:var(--blue)}
+.note-card.green{background:var(--green)}
+.note-card.white{background:var(--white)}
+.note-card:active{filter:brightness(.96)}
+.note-main{flex:1;min-width:0}
+.note-title{font-size:1.28rem;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25;text-align:center;color:#222;letter-spacing:-.03em}
+.note-preview{display:none}
+.note-date{display:none}
+.reorder-tools{display:none!important}
+.reorder-btn{width:28px;height:26px;border:1px solid #d0d0d0;background:#fff;border-radius:8px;color:#333;font-weight:900;font-size:.9rem;line-height:1}
+.reorder-btn:active{background:#e8f7f5;transform:scale(.94)}
+.reorder-btn:disabled{opacity:.28;background:#f3f3f3;color:#aaa}
+.note-card.manual-mode .note-date{font-size:.78rem}
+
+.empty{padding:56px 24px;text-align:center;color:var(--muted);line-height:1.9}
+.fab-area{position:fixed;right:22px;bottom:calc(var(--safe-b) + 76px);display:flex;flex-direction:column;gap:14px;z-index:20}
+.fab{width:64px;height:64px;border:none;border-radius:19px;background:var(--accent);color:#fff;font-size:2.35rem;line-height:1;box-shadow:var(--shadow)}
+.fab.draw{background:#5b6ee1;font-size:1.7rem}
+.fab:active{transform:scale(.94)}
+.bottom{height:calc(var(--safe-b) + 62px);padding-bottom:var(--safe-b);background:#fff;border-top:1px solid #ccc;display:grid;grid-template-columns:repeat(3,1fr);z-index:10;box-shadow:0 -2px 10px rgba(0,0,0,.06)}
+.bottom .nav{font-size:1.45rem;gap:2px}
+.bottom .nav span{font-size:.66rem;font-weight:700}
+.topnav{background:#eee;border-bottom:1px solid #ccc;display:grid;grid-template-columns:repeat(2,1fr);height:46px}
+.topnav .nav{flex-direction:row;gap:6px;font-size:1.2rem}
+.topnav .nav span{font-size:.85rem;font-weight:600}
+.nav{border:none;background:transparent;color:#666;font-size:1.55rem;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1px}
+.nav span{font-size:.58rem}
+.nav.active{color:#009688}
+.editor{position:absolute;inset:0;background:var(--paper);z-index:30;display:none;flex-direction:column}
+.editor.pink{background:var(--pink)}
+.editor.blue{background:var(--blue)}
+.editor.green{background:var(--green)}
+.editor.white{background:var(--white)}
+.editor.open{display:flex}
+.editor-top{padding:calc(var(--safe-t) + 7px) 10px 8px;background:#f5dc51;display:flex;align-items:center;gap:8px}
+.editor-title{flex:1;font-size:1.35rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.edit-tools{display:flex;gap:2px}
+.meta{padding:8px 12px;color:#7b7568;background:#fff9c8;border-bottom:1px solid var(--line);font-size:.95rem;display:flex;justify-content:space-between;gap:10px}
+.textwrap{flex:1;position:relative;background:#fff;display:flex;flex-direction:column;min-height:0}
+textarea{width:100%;flex:1;min-height:0;resize:none;border:none;outline:none;background-color:transparent;background-image:none;padding:12px 12px 108px;font-size:var(--editor-font-size);line-height:var(--editor-line-height);color:#000}
+.editor.yellow{background:var(--paper)}
+.editor.yellow .textwrap,.editor.yellow textarea,.editor.yellow .image-preview,.editor.yellow .url-preview,.editor.yellow .table-preview{background-color:var(--paper)}
+.editor.pink .textwrap,.editor.pink textarea,.editor.pink .image-preview,.editor.pink .url-preview,.editor.pink .table-preview{background-color:var(--pink)}
+.editor.blue .textwrap,.editor.blue textarea,.editor.blue .image-preview,.editor.blue .url-preview,.editor.blue .table-preview{background-color:var(--blue)}
+.editor.green .textwrap,.editor.green textarea,.editor.green .image-preview,.editor.green .url-preview,.editor.green .table-preview{background-color:var(--green)}
+.editor.white .textwrap,.editor.white textarea,.editor.white .image-preview,.editor.white .url-preview,.editor.white .table-preview{background-color:var(--white)}
+.textwrap.pattern-lines textarea{background-image:linear-gradient(to bottom, transparent calc(var(--editor-line-height) - 2px), rgba(0,0,0,.12) calc(var(--editor-line-height) - 1px));background-size:100% var(--editor-line-height);background-position:0 12px}
+.textwrap.pattern-grid textarea{background-image:linear-gradient(rgba(0,0,0,.10) 1px, transparent 1px),linear-gradient(90deg, rgba(0,0,0,.10) 1px, transparent 1px);background-size:24px 24px}
+.textwrap.pattern-dots textarea{background-image:radial-gradient(rgba(0,0,0,.22) 1.2px, transparent 1.2px);background-size:18px 18px;background-position:9px 9px}
+.palette{position:absolute;left:12px;right:12px;bottom:calc(var(--safe-b) + 12px);display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:rgba(255,255,255,.78);backdrop-filter:blur(5px);border:1px solid rgba(0,0,0,.1);border-radius:16px;padding:8px}
+.swatch{width:34px;height:34px;border-radius:50%;border:2px solid rgba(0,0,0,.15)}
+.swatch.sel{outline:3px solid #333}
+.swatch.yellow{background:var(--paper)}
+.swatch.pink{background:var(--pink)}
+.swatch.blue{background:var(--blue)}
+.swatch.green{background:var(--green)}
+.swatch.white{background:var(--white)}
+.paper-select{border:1px solid rgba(0,0,0,.16);background:#fff;border-radius:12px;padding:7px 9px;font-size:.82rem;color:#333;font-weight:700;outline:none}
+.paper-label{font-size:.75rem;color:#555;font-weight:800;margin-left:2px}
+.format-btn{border:1px solid rgba(0,0,0,.16);background:#fff;border-radius:12px;padding:7px 9px;font-size:.84rem;font-weight:900;color:#333;min-width:38px;height:36px;line-height:1}
+.format-btn.active{background:#333;color:#fff;border-color:#333}
+.format-btn.color-btn{position:relative;padding-right:14px}
+.format-btn.color-btn::after{content:'';position:absolute;left:9px;right:9px;bottom:5px;height:4px;border-radius:999px;background:var(--fc,#111)}
+.format-pop{position:fixed;left:16px;right:16px;bottom:calc(var(--safe-b) + 88px);background:#fff;border:1px solid rgba(0,0,0,.12);border-radius:22px;box-shadow:0 12px 36px rgba(0,0,0,.20);padding:14px 14px 16px;z-index:120;display:none}
+.format-pop.open{display:block}
+.format-pop-head{font-size:1rem;font-weight:900;color:#222;margin-bottom:10px}
+.format-size-list{display:flex;flex-direction:column;gap:7px}
+.format-size-btn{border:none;background:#f4f4f4;color:#222;border-radius:14px;padding:12px 14px;text-align:left;font-weight:800;font-size:1rem}
+.format-size-btn.active{background:#333;color:#fff}
+.format-size-btn .sub{display:block;font-size:.75rem;color:#777;font-weight:700;margin-top:3px}
+.format-size-btn.active .sub{color:#ddd}
+.format-color-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+.format-color-chip{width:44px;height:44px;border:none;border-radius:50%;border:2px solid rgba(0,0,0,.08);box-shadow:0 4px 10px rgba(0,0,0,.12);position:relative}
+.format-color-chip.sel::after{content:'✓';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.15rem;font-weight:900;text-shadow:0 1px 2px rgba(0,0,0,.45)}
+.format-pop-actions{display:flex;justify-content:flex-end;margin-top:12px}
+.format-close-btn{border:none;background:#222;color:#fff;border-radius:999px;padding:10px 16px;font-weight:900}
+.url-preview{display:flex;gap:7px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:8px 12px 0;flex-shrink:0;border-top:1px solid rgba(0,0,0,.06)}
+.url-preview:empty{display:none}
+.url-chip{display:inline-flex;align-items:center;gap:5px;max-width:260px;border:1px solid #bfe4df;background:#eefaf8;color:#00796b;border-radius:18px;padding:7px 11px;text-decoration:none;font-size:.82rem;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 0 auto}
+.url-chip:active{filter:brightness(.95);transform:scale(.98)}
+.panel{padding:14px 16px 90px}
+.panel h2{font-size:1.25rem;margin-bottom:12px}
+.menu-card{background:rgba(255,255,255,.6);border:1px solid rgba(0,0,0,.12);border-radius:14px;padding:14px;margin-bottom:10px}
+.menu-card button{width:100%;border:none;background:var(--accent);color:#fff;border-radius:12px;padding:12px;font-weight:700;margin-top:8px}
+.menu-card button.danger{background:#d44747}
+.month-head{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#fff5a8;border-bottom:1px solid var(--line)}
+.month-head button{border:none;background:#f0df71;border-radius:12px;width:36px;height:32px;font-size:1.2rem}
+.month-title{font-weight:700}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:#d7cf7a;margin:10px;border:1px solid #d7cf7a;border-radius:10px;overflow:hidden}
+.dow,.day{background:#fff8bd;text-align:center;min-height:62px;padding:5px 2px;font-size:.8rem;position:relative;overflow:hidden}
+.dow{min-height:auto;font-weight:700;color:#766}
+.day{display:flex;flex-direction:column;align-items:center;justify-content:flex-start}
+.day.om{opacity:.35;display:block;min-height:62px}
+.day.has:not(.has-image)::after{content:"";position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:7px;height:7px;border-radius:50%;background:#e34343}
+.day.today{outline:2px solid var(--accent);outline-offset:-2px}
+.day:active{background:#f3e988}
+
+/* Calendar image thumbnails */
+.day.has-image{background:#25231e!important;color:#fff;padding:0;justify-content:flex-start;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)}
+.day.has-image:active{filter:brightness(.94)}
+.cal-cell-thumb{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;background:#222}
+.day.has-image::before{content:"";position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.55),rgba(0,0,0,.10) 42%,rgba(0,0,0,.42));z-index:1;pointer-events:none}
+.day.has-image .day-num{position:relative;z-index:2;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.9);font-size:.92rem;font-weight:900;padding:3px 5px;margin-top:2px;border-radius:8px;background:rgba(0,0,0,.22);line-height:1}
+.day.has-image .holiday-name{position:relative;z-index:2;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.9);max-width:94%;background:rgba(192,57,43,.72);border-radius:6px;padding:1px 4px;margin-top:3px}
+.cal-img-count{position:absolute;right:3px;bottom:3px;z-index:2;background:rgba(0,0,0,.58);color:#fff;border-radius:9px;padding:1px 6px;font-size:.56rem;font-weight:900;line-height:1.35}
+.day.has-image.selected{outline:3px solid var(--accent);outline-offset:-3px}
+.day.has-image.today{box-shadow:inset 0 0 0 3px var(--accent)}
+
+/* Japanese holidays */
+.dow.sun,.day.sun,.day.holiday{color:#c0392b}
+.dow.sat,.day.sat{color:#3569b5}
+.day.holiday{background:#fff1f1;font-weight:800}
+.day.selected.holiday:not(.has-image){background:#ffe5e5!important}
+.day-num{display:block;line-height:1.1}
+.holiday-name{display:block;margin-top:1px;font-size:.50rem;line-height:1.05;color:#c0392b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;font-weight:800}
+.day.has:not(.has-image) .holiday-name{padding-bottom:8px}
+.hidden{display:none!important}
+
+/* Images */
+.note-thumb{width:54px;height:54px;object-fit:cover;border-radius:10px;border:1px solid #ddd;flex-shrink:0;background:#fff}
+.image-preview{display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:10px 12px 0;background:#fff;flex-shrink:0}
+.image-preview:empty{display:none}
+.image-item{position:relative;flex:0 0 auto}
+.image-item img{height:88px;max-width:160px;object-fit:cover;border-radius:10px;border:1px solid #ddd;display:block;background:#fff}
+.image-delete{position:absolute;top:-7px;right:-7px;width:24px;height:24px;border:none;border-radius:50%;background:#d44747;color:#fff;font-size:1rem;line-height:1;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,.22)}
+.image-delete:active{transform:scale(.92)}
+
+
+
+/* ===== 画像削除タップ修正 ===== */
+.image-delete,.cal-image-delete,.drawing-delete{
+  z-index:30!important;
+  pointer-events:auto!important;
+  touch-action:manipulation!important;
+  -webkit-touch-callout:none!important;
+  user-select:none!important;
+  -webkit-user-select:none!important;
+}
+.image-item,.cal-image-item,.drawing-item{overflow:visible!important;}
+
+/* Folders */
+.folder-row{display:none!important;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;background:#fff;padding:8px;border-bottom:1px solid #e0e0e0;flex-shrink:0}
+.folder-chip{flex:0 0 auto;border:1px solid #ddd;background:#fff;border-radius:18px;padding:7px 12px;font-size:.82rem;color:#555;font-weight:700;white-space:nowrap}
+.folder-chip.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.folder-chip.up{background:#f7f7f7;color:#333;border-style:dashed}
+.folder-chip.add-inside{background:#eefaf8;border-color:#bfe4df;color:#00796b}
+.folder-add{flex:1;border:1px solid #ddd;background:#fff;border-radius:10px;padding:8px 10px;font-size:.95rem;font-weight:700;color:#333}
+.folder-badge{display:inline-block;background:#eef7f6;color:#00796b;border:1px solid #c9e8e4;border-radius:10px;padding:1px 7px;font-size:.68rem;margin-right:5px;vertical-align:middle;max-width:190px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.editor-folder{white-space:nowrap;color:#00796b;font-weight:700;overflow:hidden;text-overflow:ellipsis;max-width:45%}
+.folder-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.folder-line{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;background:#fff;border:1px solid #ddd;border-radius:10px;padding:8px 10px;font-size:.9rem}
+.folder-name{flex:1;min-width:0;line-height:1.45;cursor:pointer;word-break:break-word}
+.folder-name small{display:block;color:#777;font-size:.72rem;font-weight:500;margin-top:2px}
+.folder-actions{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;max-width:172px}
+.folder-line button{width:auto;margin:0;border:none;color:#fff;border-radius:9px;padding:7px 9px;font-size:.74rem;font-weight:700}
+.folder-line button.sub{background:var(--accent)}
+.folder-line button.edit{background:#d89a24}
+.folder-line button.danger{background:#d44747}
+.folder-empty{color:#777;font-size:.85rem;margin-top:8px;line-height:1.7}
+
+/* One-touch folder move */
+.folder-move{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:85;display:none;align-items:flex-end;justify-content:center}
+.folder-move.open{display:flex}
+.folder-move-box{width:100%;max-width:430px;background:#fff;border-radius:20px 20px 0 0;box-shadow:0 -8px 28px rgba(0,0,0,.22);max-height:72vh;display:flex;flex-direction:column;padding-bottom:calc(var(--safe-b) + 10px);overflow:hidden}
+.folder-move-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px 10px;background:#fff5a8;border-bottom:1px solid var(--line)}
+.folder-move-title{font-weight:900;color:#333;font-size:1rem}
+.folder-move-hint{font-size:.76rem;color:#6d6550;margin-top:2px}
+.folder-move-close{border:none;background:rgba(255,255,255,.78);border-radius:50%;width:36px;height:36px;font-size:1.4rem;line-height:1;color:#333;flex-shrink:0}
+.folder-move-list{overflow:auto;-webkit-overflow-scrolling:touch;padding:10px 12px 14px;display:flex;flex-direction:column;gap:7px}
+.folder-move-btn{width:100%;border:1px solid #ddd;background:#fff;border-radius:12px;padding:10px 12px;text-align:left;color:#333;font-size:.92rem;font-weight:800;line-height:1.35;display:flex;flex-direction:column;gap:2px;cursor:pointer}
+.folder-move-btn:active{transform:scale(.99);background:#f7f7f7}
+.folder-move-btn.active{border-color:var(--accent);background:#eefaf8;color:#00796b}
+.folder-move-btn.uncat{background:#fbfbfb}
+.folder-move-btn.add{border-style:dashed;background:#fffdf0;color:#9a7500;text-align:center;align-items:center}
+.folder-move-path{font-size:.72rem;color:#777;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.folder-move-empty{border:1px dashed #ddd;border-radius:12px;padding:14px;text-align:center;color:#777;font-size:.84rem;line-height:1.7;background:#fafafa}
+
+/* Fullscreen image viewer */
+/* ===== 手書きメモ ===== */
+.draw-editor{position:fixed;inset:0;background:#fff;z-index:60;display:none;flex-direction:column}
+.draw-editor.open{display:flex}
+.draw-top{padding:calc(var(--safe-t) + 7px) 8px 7px;background:#f5dc51;display:flex;align-items:center;gap:2px}
+.draw-title{flex:1;font-size:1.12rem;font-weight:700;white-space:nowrap;overflow:hidden}
+.draw-tools{display:flex;gap:5px;padding:6px 8px;background:#f3f3f3;border-bottom:1px solid #ddd;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.draw-tool{border:1px solid #ccc;background:#fff;border-radius:10px;min-width:50px;padding:6px 5px;font-size:1.12rem;line-height:1;color:#333;flex:none}
+.draw-tool small{display:block;font-size:.56rem;font-weight:700;margin-top:3px}
+.draw-tool.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.draw-opts{display:flex;align-items:center;gap:8px;padding:7px 10px;background:#fafafa;border-bottom:1px solid #e2e2e2;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.draw-color{width:31px;height:31px;border-radius:50%;border:2px solid rgba(0,0,0,.15);flex:none;padding:0}
+.draw-color.active{outline:3px solid var(--accent);outline-offset:2px}
+.draw-width{border:1px solid #ccc;background:#fff;border-radius:10px;padding:7px 11px;font-size:.78rem;font-weight:700;color:#333;flex:none}
+.draw-width.active{background:#333;color:#fff;border-color:#333}
+.draw-canvas-wrap{flex:1;position:relative;background:#fff;min-height:0;padding-bottom:var(--safe-b)}
+#drawCanvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;background-image:radial-gradient(rgba(0,0,0,.10) 1px, transparent 1px);background-size:22px 22px}
+
+.draw-text-box{position:absolute;display:none;z-index:5;min-width:150px;max-width:88%;background:rgba(255,255,255,.96);border:3px solid var(--accent);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.18);overflow:hidden}
+.draw-text-box.open{display:block}
+.draw-text-box textarea{width:100%;min-width:150px;min-height:54px;max-height:180px;border:none;outline:none;resize:none;background:transparent;padding:9px 10px 6px;font-size:24px;line-height:1.35;color:#111;font-weight:800}
+.draw-text-box-actions{display:flex;border-top:1px solid rgba(0,0,0,.1);background:#f7fbfa}
+.draw-text-box-actions button{flex:1;border:none;background:transparent;padding:8px 6px;font-size:.85rem;font-weight:900;color:#333}
+.draw-text-box-actions button.ok{background:var(--accent);color:#fff}
+.draw-text-box-actions button.cancel{color:#777}
+.drawing-preview{display:flex;flex-wrap:wrap;gap:8px;padding:0 12px 8px}
+.drawing-item{position:relative;width:106px;height:106px;border-radius:10px;overflow:hidden;border:2px solid rgba(0,0,0,.18);background:#fff}
+.drawing-item img{width:100%;height:100%;object-fit:cover}
+.drawing-item .drawing-edit{position:absolute;left:4px;bottom:4px;background:rgba(0,0,0,.62);color:#fff;border:none;border-radius:8px;font-size:.62rem;font-weight:700;padding:4px 8px}
+.drawing-item .drawing-delete{position:absolute;top:2px;right:2px;width:25px;height:25px;border:none;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;font-size:.95rem;line-height:1}
+/* 表（Excel風） */
+.table-preview{padding:4px 12px 8px}
+.table-preview:empty{display:none}
+.table-block{position:relative;margin-bottom:14px;border:1px solid #cfcfcf;border-radius:10px;background:#fff;overflow:hidden}
+.table-block-head{display:flex;align-items:center;justify-content:space-between;gap:6px;background:#f1f3f5;border-bottom:1px solid #ddd;padding:5px 8px}
+.table-block-head .tb-tools{display:flex;gap:4px;flex-wrap:wrap}
+.table-block-head button{border:none;border-radius:7px;background:#fff;color:#333;font-size:.72rem;font-weight:700;padding:4px 7px;border:1px solid #ccc;line-height:1}
+.table-block-head button.tb-del{background:#ffe3e3;border-color:#ffb3b3;color:#c92a2a}
+.table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table.note-table{border-collapse:collapse;width:100%;font-size:.85rem;background:#fff}
+table.note-table td{border:1px solid #d6d6d6;padding:0;min-width:64px;vertical-align:top}
+table.note-table td input{width:100%;min-width:64px;border:none;background:transparent;padding:7px 8px;font-size:.85rem;color:#222;outline:none;box-sizing:border-box}
+table.note-table td input:focus{background:#fff7d6}
+table.note-table tr:first-child td{background:#f8f9fa;font-weight:700}
+table.note-table tr:first-child td input{font-weight:700}
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;display:none;align-items:center;justify-content:center;padding:18px}
+.lightbox.open{display:flex}
+.lightbox img{max-width:100%;max-height:100%;object-fit:contain;border-radius:10px;background:#fff}
+.lightbox-close{position:fixed;top:calc(var(--safe-t) + 12px);right:14px;border:none;background:rgba(255,255,255,.92);color:#111;border-radius:50%;width:42px;height:42px;font-size:1.6rem;line-height:1;z-index:10000}
+
+/* Independent calendar memo */
+.cal-day-panel{margin:0 10px 90px;background:#fff;border:1px solid #ddd;border-radius:12px;overflow:hidden}
+.cal-panel-head{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#fff9c8;border-bottom:1px solid var(--line);padding:10px 12px}
+.cal-panel-date{font-weight:800;color:#333}
+.cal-actions{display:flex;gap:6px;align-items:center;flex-shrink:0}
+.cal-actions button{border:none;border-radius:10px;padding:7px 9px;background:var(--accent);color:#fff;font-weight:700;font-size:.8rem}
+.cal-actions button.danger{background:#d44747}
+.cal-textarea{width:100%;min-height:120px;border:none;outline:none;resize:vertical;padding:12px;font-size:1rem;line-height:1.7;background:#fff;color:#111}
+.cal-url-preview{background:#fff;padding:8px 12px;border-top:1px solid #eee}
+.cal-image-preview{display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:10px 12px;background:#fff;border-top:1px solid #eee}
+.cal-image-preview:empty{display:none}
+.cal-image-item{position:relative;flex:0 0 auto}
+.cal-image-item img{height:92px;max-width:168px;object-fit:cover;border-radius:10px;border:1px solid #ddd;background:#fff;display:block}
+.cal-image-delete{position:absolute;top:-7px;right:-7px;width:24px;height:24px;border:none;border-radius:50%;background:#d44747;color:#fff;font-size:1rem;line-height:1;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,.22)}
+/* 選択中の日付：画像セルを壊さないよう、画像なしだけ背景色を変える */
+.day.selected:not(.has-image){background:#e3f7f4!important;outline:2px solid var(--accent);outline-offset:-2px}
+.day.has-image.selected{outline:3px solid var(--accent);outline-offset:-3px}
+
+
+
+/* ===== カード型フォルダ画面：参考画像風 ===== */
+#screen-folders{background:#f4f5f7;}
+#screen-folders .scroll{padding-bottom:92px;}
+.folder-dashboard{
+  background:
+    radial-gradient(circle at -18% 26%, rgba(171,199,242,.55) 0 17%, transparent 18%),
+    radial-gradient(circle at 118% 18%, rgba(178,235,226,.72) 0 20%, transparent 21%),
+    #f4f5f7;
+  min-height:100%;
+  padding:18px 16px 96px;
+}
+.folder-hero{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin:6px 0 14px;
+}
+.folder-hero-title{
+  font-size:1.85rem;
+  font-weight:900;
+  letter-spacing:-.04em;
+  color:#222;
+  line-height:1.05;
+}
+.folder-hero-sub{
+  margin-top:5px;
+  font-size:.92rem;
+  font-weight:700;
+  color:#777;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  max-width:230px;
+}
+.folder-primary{
+  border:none;
+  border-radius:18px;
+  background:#fff;
+  color:#333;
+  padding:11px 14px;
+  font-weight:900;
+  font-size:.95rem;
+  box-shadow:0 8px 24px rgba(0,0,0,.10);
+}
+.folder-primary:active{transform:scale(.97);filter:brightness(.96)}
+.folder-head-actions{display:flex;gap:8px;align-items:center;position:relative;}
+.folder-icon-action{
+  width:46px;height:46px;border:none;border-radius:18px;background:#fff;color:#333;
+  font-size:1.4rem;font-weight:900;box-shadow:0 8px 24px rgba(0,0,0,.10);
+}
+.folder-icon-action:active{transform:scale(.96);filter:brightness(.96)}
+.folder-menu-pop{
+  position:absolute;right:0;top:54px;z-index:50;width:205px;background:#fff;border-radius:18px;
+  box-shadow:0 14px 34px rgba(0,0,0,.18);padding:8px;display:none;
+}
+.folder-menu-pop.open{display:block;}
+.folder-menu-pop button{
+  width:100%;border:none;background:transparent;color:#333;text-align:left;border-radius:12px;
+  padding:12px 10px;font-size:.95rem;font-weight:800;
+}
+.folder-menu-pop button:active{background:#f2f4f7;}
+.folder-menu-pop button.danger{color:#c0392b;}
+
+.folder-crumb{
+  display:flex;
+  gap:8px;
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+  padding:0 0 14px;
+}
+.folder-crumb button{
+  border:none;
+  border-radius:999px;
+  background:rgba(255,255,255,.82);
+  color:#555;
+  font-weight:800;
+  font-size:.82rem;
+  padding:8px 12px;
+  white-space:nowrap;
+  box-shadow:0 4px 12px rgba(0,0,0,.06);
+}
+.folder-crumb button.active{background:#222;color:#fff;}
+.folder-card-grid{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  padding-bottom:18px;
+}
+.folder-swipe{
+  position:relative;
+  border-radius:18px;
+  overflow:hidden;
+  touch-action:pan-y;
+  background:#e9edf2;
+  box-shadow:0 8px 20px rgba(40,40,60,.10);
+}
+.folder-card-tile{
+  position:relative;
+  z-index:2;
+  width:100%;
+  min-height:84px;
+  border:none;
+  border-radius:18px;
+  padding:13px 15px;
+  color:#222;
+  text-align:left;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  background:linear-gradient(135deg,var(--fc-bg,#fff),#fff);
+  cursor:pointer;
+  transform:translateX(var(--swipe-x,0px));
+  transition:transform .18s ease, filter .12s ease;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55);
+}
+.folder-card-tile:active{filter:brightness(.98)}
+.folder-card-main{display:flex;align-items:center;gap:13px;min-width:0;flex:1;}
+.folder-card-icon{
+  width:48px;
+  height:48px;
+  border-radius:15px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:1.72rem;
+  line-height:1;
+  background:rgba(255,255,255,.68);
+  color:var(--fc,#009688);
+  box-shadow:0 5px 14px rgba(0,0,0,.08);
+  flex:0 0 auto;
+}
+.folder-card-text{min-width:0;flex:1;}
+.folder-card-name{
+  font-size:1.12rem;
+  font-weight:900;
+  letter-spacing:-.04em;
+  line-height:1.25;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.folder-card-count{
+  margin-top:4px;
+  font-size:.78rem;
+  font-weight:800;
+  color:#6f7480;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.folder-card-arrow{font-size:1.75rem;font-weight:900;color:#7b818b;flex:0 0 auto;}
+.folder-card-actions{
+  position:absolute;
+  z-index:1;
+  top:0;
+  right:0;
+  bottom:0;
+  width:224px;
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  border-radius:0 18px 18px 0;
+  overflow:hidden;
+}
+.folder-card-actions button{
+  border:none;
+  color:#fff;
+  font-size:.8rem;
+  font-weight:900;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  align-items:center;
+  justify-content:center;
+}
+.folder-card-actions button:nth-child(1){background:#4b8fe8;}
+.folder-card-actions button:nth-child(2){background:#7f858d;}
+.folder-card-actions button:nth-child(3){background:#ef4d45;}
+.folder-card-actions button span{font-size:1.35rem;line-height:1;}
+.folder-swipe.open .folder-card-tile{--swipe-x:-224px;}
+.folder-swipe.open{box-shadow:0 10px 24px rgba(40,40,60,.16);}
+.folder-color-0{--fc:#13a79b;--fc-bg:#e3fbf7;}
+.folder-color-1{--fc:#f57c00;--fc-bg:#fff0df;}
+.folder-color-2{--fc:#1976d2;--fc-bg:#e7f4ff;}
+.folder-color-3{--fc:#d83b7d;--fc-bg:#ffeaf3;}
+.folder-color-4{--fc:#6c63df;--fc-bg:#eeeeff;}
+.folder-color-5{--fc:#e8525d;--fc-bg:#ffe7e9;}
+.folder-color-6{--fc:#1d9bd1;--fc-bg:#e4f8ff;}
+.folder-color-7{--fc:#8d56cf;--fc-bg:#f3e9ff;}
+.folder-color-8{--fc:#16a085;--fc-bg:#e6fbf6;}
+.folder-color-9{--fc:#7b4aa0;--fc-bg:#f2e6f8;}
+.folder-color-10{--fc:#43a047;--fc-bg:#eaf8e8;}
+.folder-color-11{--fc:#fb8c00;--fc-bg:#fff4df;}
+.folder-add-tile{
+  border:2px dashed #d2d7df;
+  background:#fff!important;
+  justify-content:center;
+  text-align:center;
+}
+.folder-add-tile .folder-card-main{justify-content:center;}
+.folder-add-tile .folder-card-icon{background:#f2f4f7;color:#999;}
+.folder-add-tile .folder-card-name{color:#333;}
+.folder-add-tile .folder-card-count{color:#888;}
+.folder-empty-grid{
+  background:rgba(255,255,255,.75);
+  border:1px dashed #d8d8d8;
+  border-radius:18px;
+  padding:22px 10px;
+  text-align:center;
+  color:#777;
+  font-weight:700;
+  line-height:1.7;
+}
+.folder-swipe-hint{
+  padding:12px 8px 4px;
+  text-align:center;
+  color:#858995;
+  font-size:.85rem;
+  font-weight:700;
+  line-height:1.7;
+}
+.folder-section-title{padding:8px 4px 2px;color:#333;font-size:.96rem;font-weight:900;letter-spacing:-.03em}
+.folder-note-empty{background:rgba(255,255,255,.72);border:1px dashed #d8d8d8;border-radius:18px;padding:16px 10px;text-align:center;color:#777;font-size:.88rem;font-weight:700;line-height:1.7}
+@media (max-width:360px){
+  .folder-dashboard{padding-left:12px;padding-right:12px;}
+  .folder-card-tile{min-height:78px;padding:11px 12px;}
+  .folder-card-icon{width:42px;height:42px;font-size:1.45rem;}
+  .folder-card-name{font-size:1rem;}
+  .folder-card-actions{width:198px;}
+  .folder-swipe.open .folder-card-tile{--swipe-x:-198px;}
+}
+
+@media (max-width:360px){
+  :root{--editor-font-size:1.35rem;--editor-line-height:38px;}
+  .brand{font-size:1.45rem}.note-title{font-size:1.12rem}
+}
+
+
+/* ===== 3Dデザイン追加版 ===== */
+:root{
+  --bg:#d1d5db;
+  --text:#000000;
+  --bar:#e5e7eb;
+  --paper:#fff3a6;
+  --paper2:#ffffff;
+  --line:#b9bec8;
+  --muted:#222222;
+  --accent:#00897b;
+  --shadow:0 18px 0 rgba(0,0,0,.13),0 26px 42px rgba(0,0,0,.28);
+  --deep-shadow:0 16px 0 rgba(0,0,0,.16),0 28px 46px rgba(0,0,0,.30);
+  --edge:rgba(255,255,255,.72);
+}
+html,body{
+  background:#d1d5db!important;
+  color:#000!important;
+}
+body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  background:
+    radial-gradient(circle at 18% 8%, rgba(255,255,255,.58), transparent 28%),
+    radial-gradient(circle at 82% 0%, rgba(255,255,255,.38), transparent 25%),
+    linear-gradient(145deg,#eef0f4 0%,#d1d5db 48%,#aeb4bf 100%);
+  z-index:-1;
+}
+.app{
+  background:linear-gradient(145deg,#edf0f5 0%,#d1d5db 52%,#b5bbc6 100%)!important;
+  color:#000!important;
+  perspective:1200px;
+  transform-style:preserve-3d;
+}
+*{color:inherit;}
+button,select,input,textarea{color:#000;}
+.top,.editor-top,.draw-top,.month-head{
+  background:linear-gradient(180deg,#fff17a 0%,#f5dc51 48%,#d6ad16 100%)!important;
+  color:#000!important;
+  border-bottom:1px solid rgba(95,73,0,.35)!important;
+  box-shadow:0 8px 0 rgba(150,112,0,.45),0 18px 30px rgba(0,0,0,.20),inset 0 1px 0 rgba(255,255,255,.86)!important;
+  transform:translateZ(18px);
+}
+.logo,.brand,.brand small,.editor-title,.draw-title,.month-title,.iconbtn{color:#000!important;text-shadow:0 1px 0 rgba(255,255,255,.45);}
+.screen.active{background:transparent;}
+.scroll{
+  background:transparent;
+  transform-style:preserve-3d;
+}
+.note-list{
+  perspective:1100px;
+  transform-style:preserve-3d;
+  gap:18px;
+  padding-top:20px;
+}
+.note-swipe{
+  background:transparent!important;
+  overflow:visible!important;
+  box-shadow:none!important;
+  transform-style:preserve-3d;
+}
+.note-card{
+  color:#000!important;
+  border:1px solid rgba(0,0,0,.16)!important;
+  border-bottom:5px solid rgba(0,0,0,.22)!important;
+  background:linear-gradient(145deg,var(--paper) 0%,#fffbe0 60%,#ead774 100%)!important;
+  box-shadow:0 12px 0 rgba(121,99,0,.24),0 24px 34px rgba(0,0,0,.25),inset 0 2px 0 rgba(255,255,255,.86),inset -8px -8px 18px rgba(0,0,0,.055)!important;
+  transform:translateX(var(--note-swipe-x,0px)) rotateX(5deg) rotateY(-2deg) translateZ(8px)!important;
+  transition:transform .18s ease, box-shadow .18s ease, filter .12s ease, opacity .12s ease!important;
+}
+.note-card.pink{background:linear-gradient(145deg,#ffeef4 0%,#fff6f9 58%,#f5b8ca 100%)!important;}
+.note-card.blue{background:linear-gradient(145deg,#eef5ff 0%,#ffffff 58%,#b9d8ff 100%)!important;}
+.note-card.green{background:linear-gradient(145deg,#effaf1 0%,#ffffff 58%,#bfe8c8 100%)!important;}
+.note-card.white{background:linear-gradient(145deg,#ffffff 0%,#f7f7f7 58%,#d9dde5 100%)!important;}
+.note-card:active{
+  transform:translateX(var(--note-swipe-x,0px)) rotateX(2deg) rotateY(-1deg) translateY(7px) translateZ(2px)!important;
+  box-shadow:0 5px 0 rgba(0,0,0,.18),0 14px 22px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.7)!important;
+  filter:brightness(.98)!important;
+}
+.note-title,.note-preview,.note-date,.note-main{color:#000!important;}
+.note-actions,.folder-card-actions{
+  box-shadow:inset 10px 0 16px rgba(0,0,0,.18);
+}
+.note-actions button,.folder-card-actions button{
+  color:#fff!important;
+  text-shadow:0 1px 2px rgba(0,0,0,.35);
+}
+.fab-area{perspective:900px;}
+.fab,.folder-primary,.folder-icon-action,.iconbtn,.month-head button,.cal-actions button,.menu-card button,.format-btn,.format-close-btn,.draw-tool,.draw-width,.folder-move-btn{
+  transform:translateZ(10px);
+  box-shadow:0 8px 0 rgba(0,0,0,.18),0 16px 24px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.55)!important;
+  border-bottom:3px solid rgba(0,0,0,.18)!important;
+}
+.iconbtn,.format-btn,.draw-tool,.draw-width,.month-head button{
+  background:linear-gradient(180deg,#ffffff,#dfe3ea)!important;
+}
+.fab{
+  background:linear-gradient(145deg,#00a99a 0%,#00897b 54%,#00675b 100%)!important;
+  color:#fff!important;
+  border:1px solid rgba(0,0,0,.22)!important;
+}
+.fab.draw{background:linear-gradient(145deg,#7f8cff 0%,#5b6ee1 52%,#3d48a8 100%)!important;}
+.fab:active,.folder-primary:active,.folder-icon-action:active,.iconbtn:active,.month-head button:active,.cal-actions button:active,.menu-card button:active,.format-btn:active,.draw-tool:active,.draw-width:active,.folder-move-btn:active{
+  transform:translateY(6px) translateZ(2px)!important;
+  box-shadow:0 3px 0 rgba(0,0,0,.18),0 8px 14px rgba(0,0,0,.20),inset 0 1px 0 rgba(255,255,255,.45)!important;
+}
+.bottom{
+  background:linear-gradient(180deg,#ffffff 0%,#e2e6ed 55%,#b9c0cb 100%)!important;
+  border-top:1px solid rgba(0,0,0,.18)!important;
+  box-shadow:0 -8px 0 rgba(0,0,0,.10),0 -18px 26px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.9)!important;
+  transform:translateZ(20px);
+}
+.nav{color:#000!important;text-shadow:0 1px 0 rgba(255,255,255,.65);}
+.nav.active{
+  color:#000!important;
+  font-weight:900;
+  transform:translateY(-2px) translateZ(12px);
+  filter:drop-shadow(0 5px 4px rgba(0,0,0,.2));
+}
+.editor,.draw-editor{
+  background:linear-gradient(145deg,#e9edf2 0%,#cdd2db 100%)!important;
+  color:#000!important;
+  perspective:1200px;
+}
+.meta,.cal-panel-head,.table-block-head{
+  background:linear-gradient(180deg,#fffbe0,#e9e2a1)!important;
+  color:#000!important;
+  box-shadow:0 5px 0 rgba(0,0,0,.10),inset 0 1px 0 rgba(255,255,255,.8)!important;
+}
+.textwrap,.cal-day-panel,.table-block,.menu-card,.format-pop,.folder-move-box,.lightbox img{
+  border:1px solid rgba(0,0,0,.15)!important;
+  border-bottom:5px solid rgba(0,0,0,.20)!important;
+  border-radius:22px!important;
+  background:linear-gradient(145deg,#ffffff 0%,#edf0f5 100%)!important;
+  color:#000!important;
+  box-shadow:0 12px 0 rgba(0,0,0,.12),0 26px 36px rgba(0,0,0,.24),inset 0 2px 0 rgba(255,255,255,.85)!important;
+  margin:12px;
+  overflow:hidden;
+  transform:translateZ(8px);
+}
+.editor.yellow .textwrap,.editor.yellow textarea,.editor.yellow .image-preview,.editor.yellow .url-preview,.editor.yellow .table-preview{background:linear-gradient(145deg,#fff8bd,#f3e680)!important;}
+.editor.pink .textwrap,.editor.pink textarea,.editor.pink .image-preview,.editor.pink .url-preview,.editor.pink .table-preview{background:linear-gradient(145deg,#ffeef4,#f6c6d5)!important;}
+.editor.blue .textwrap,.editor.blue textarea,.editor.blue .image-preview,.editor.blue .url-preview,.editor.blue .table-preview{background:linear-gradient(145deg,#eef5ff,#c8ddfb)!important;}
+.editor.green .textwrap,.editor.green textarea,.editor.green .image-preview,.editor.green .url-preview,.editor.green .table-preview{background:linear-gradient(145deg,#effaf1,#c9ebd0)!important;}
+.editor.white .textwrap,.editor.white textarea,.editor.white .image-preview,.editor.white .url-preview,.editor.white .table-preview{background:linear-gradient(145deg,#ffffff,#e7ebf1)!important;}
+textarea,.cal-textarea,table.note-table td input{
+  color:#000!important;
+  text-shadow:0 1px 0 rgba(255,255,255,.35);
+}
+.palette,.draw-opts,.draw-tools,.url-preview,.image-preview,.drawing-preview,.table-preview,.cal-image-preview,.cal-url-preview{
+  background:rgba(255,255,255,.70)!important;
+  backdrop-filter:blur(8px);
+  color:#000!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.75);
+}
+.swatch,.format-color-chip,.draw-color{
+  box-shadow:0 5px 0 rgba(0,0,0,.18),0 12px 20px rgba(0,0,0,.18),inset 0 2px 0 rgba(255,255,255,.65)!important;
+  border:1px solid rgba(0,0,0,.24)!important;
+}
+.swatch:active,.format-color-chip:active,.draw-color:active{transform:translateY(4px)!important;box-shadow:0 2px 0 rgba(0,0,0,.18),0 7px 12px rgba(0,0,0,.18)!important;}
+.folder-dashboard{
+  background:linear-gradient(145deg,#eceff4 0%,#d1d5db 52%,#b1b7c2 100%)!important;
+  color:#000!important;
+  perspective:1100px;
+}
+.folder-hero-title,.folder-hero-sub,.folder-card-name,.folder-card-count,.folder-card-arrow,.folder-section-title,.folder-crumb button,.folder-menu-pop button,.folder-empty-grid,.folder-note-empty{color:#000!important;}
+.folder-card-grid{perspective:1100px;transform-style:preserve-3d;gap:16px;}
+.folder-swipe{background:transparent!important;overflow:visible!important;box-shadow:none!important;transform-style:preserve-3d;}
+.folder-card-tile{
+  border:1px solid rgba(0,0,0,.15)!important;
+  border-bottom:5px solid rgba(0,0,0,.23)!important;
+  background:linear-gradient(145deg,var(--fc-bg,#fff) 0%,#ffffff 55%,rgba(0,0,0,.07) 100%)!important;
+  box-shadow:0 12px 0 rgba(0,0,0,.12),0 24px 34px rgba(0,0,0,.23),inset 0 2px 0 rgba(255,255,255,.86)!important;
+  transform:translateX(var(--swipe-x,0px)) rotateX(5deg) rotateY(-2deg) translateZ(8px)!important;
+  color:#000!important;
+}
+.folder-card-tile:active{
+  transform:translateX(var(--swipe-x,0px)) rotateX(2deg) rotateY(-1deg) translateY(6px) translateZ(2px)!important;
+  box-shadow:0 5px 0 rgba(0,0,0,.13),0 14px 20px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.75)!important;
+}
+.folder-card-icon{
+  background:linear-gradient(145deg,rgba(255,255,255,.95),rgba(255,255,255,.45))!important;
+  box-shadow:0 7px 0 rgba(0,0,0,.12),0 14px 20px rgba(0,0,0,.15),inset 0 2px 0 rgba(255,255,255,.88)!important;
+}
+.folder-crumb button,.folder-menu-pop,.folder-empty-grid,.folder-note-empty{
+  background:rgba(255,255,255,.78)!important;
+  box-shadow:0 7px 0 rgba(0,0,0,.08),0 16px 26px rgba(0,0,0,.15)!important;
+}
+.folder-crumb button.active{background:#111!important;color:#fff!important;}
+.cal-grid{
+  background:#8f98a8!important;
+  border:1px solid rgba(0,0,0,.18)!important;
+  box-shadow:0 14px 0 rgba(0,0,0,.14),0 26px 34px rgba(0,0,0,.20),inset 0 2px 0 rgba(255,255,255,.5)!important;
+  transform:rotateX(3deg) translateZ(8px);
+}
+.dow,.day{
+  background:linear-gradient(145deg,#fff7b8,#e8d968)!important;
+  color:#000!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.72),inset -2px -2px 5px rgba(0,0,0,.08)!important;
+}
+.day:active{transform:translateY(2px);filter:brightness(.96);}
+.day.holiday,.day.sun{color:#a50000!important;}
+.day.sat{color:#003f9e!important;}
+.day.selected:not(.has-image){background:linear-gradient(145deg,#e3f7f4,#a9dfd7)!important;}
+.day.today{outline:3px solid #000!important;}
+.day.has-image{background:#25231e!important;color:#fff!important;}
+.day.has-image .day-num,.day.has-image .holiday-name,.cal-img-count{color:#fff!important;}
+.image-item img,.cal-image-item img,.drawing-item,.note-thumb{
+  box-shadow:0 6px 0 rgba(0,0,0,.13),0 14px 22px rgba(0,0,0,.20)!important;
+  border:1px solid rgba(0,0,0,.18)!important;
+}
+.format-pop.open{transform:translateZ(30px);}
+.lightbox{background:rgba(0,0,0,.78)!important;backdrop-filter:blur(4px);}
+@media (hover:hover){
+  .note-card:hover,.folder-card-tile:hover{
+    transform:translateX(var(--note-swipe-x,0px)) rotateX(3deg) rotateY(1deg) translateY(-3px) translateZ(16px)!important;
+  }
+  .folder-card-tile:hover{transform:translateX(var(--swipe-x,0px)) rotateX(3deg) rotateY(1deg) translateY(-3px) translateZ(16px)!important;}
+}
+@media (prefers-reduced-motion:reduce){
+  .note-card,.folder-card-tile,.fab,.iconbtn,.nav{transition:none!important;transform:none!important;}
+}
+
+
+/* ===== 紙の種類エラー修正 =====
+   3D背景の!important指定で、横線・方眼・ドットが消えないように上書き */
+#editor .textwrap.pattern-plain textarea,
+#editor .textwrap.pattern-lines textarea,
+#editor .textwrap.pattern-grid textarea,
+#editor .textwrap.pattern-dots textarea{
+  background-color:transparent!important;
+  background-repeat:repeat!important;
+}
+#editor .textwrap.pattern-plain textarea{
+  background-image:none!important;
+}
+#editor .textwrap.pattern-lines textarea{
+  background-image:linear-gradient(to bottom, transparent calc(var(--editor-line-height) - 2px), rgba(0,0,0,.20) calc(var(--editor-line-height) - 1px), transparent var(--editor-line-height))!important;
+  background-size:100% var(--editor-line-height)!important;
+  background-position:0 12px!important;
+}
+#editor .textwrap.pattern-grid textarea{
+  background-image:linear-gradient(rgba(0,0,0,.15) 1px, transparent 1px),linear-gradient(90deg, rgba(0,0,0,.15) 1px, transparent 1px)!important;
+  background-size:24px 24px,24px 24px!important;
+  background-position:0 0,0 0!important;
+}
+#editor .textwrap.pattern-dots textarea{
+  background-image:radial-gradient(rgba(0,0,0,.26) 1.25px, transparent 1.25px)!important;
+  background-size:18px 18px!important;
+  background-position:9px 9px!important;
+}
+.paper-select{
+  min-width:76px;
+  color:#000!important;
+  background:linear-gradient(180deg,#ffffff,#e7ebf1)!important;
+}
+.paper-label{color:#000!important;}
+
+
+
+/* ===== ペン色エラー修正 =====
+   手書きの色ボタンが確実に色表示・選択反映されるように固定 */
+.draw-color{
+  width:34px!important;
+  height:34px!important;
+  min-width:34px!important;
+  flex:0 0 34px!important;
+  border-radius:50%!important;
+  background:var(--draw-color,#111111)!important;
+  color:transparent!important;
+  border:2px solid rgba(0,0,0,.38)!important;
+  box-shadow:0 5px 0 rgba(0,0,0,.18),0 12px 20px rgba(0,0,0,.18),inset 0 2px 0 rgba(255,255,255,.65)!important;
+}
+.draw-color.active{
+  outline:4px solid #000!important;
+  outline-offset:2px!important;
+  transform:translateY(2px) translateZ(12px)!important;
+}
+.draw-color[data-color="#111111"]{--draw-color:#111111;}
+.draw-color[data-color="#e0245e"]{--draw-color:#e0245e;}
+.draw-color[data-color="#2d6cdf"]{--draw-color:#2d6cdf;}
+.draw-color[data-color="#2e9e44"]{--draw-color:#2e9e44;}
+.draw-color[data-color="#f08c00"]{--draw-color:#f08c00;}
+.draw-color[data-color="#8e44ad"]{--draw-color:#8e44ad;}
+
+
+/* ===== ペン本体エラー修正：Androidタッチ描画を安定化 ===== */
+#drawCanvas{touch-action:none!important;-ms-touch-action:none!important;user-select:none!important;-webkit-user-select:none!important;}
+.draw-editor button{touch-action:manipulation;}
+
+
+/* ===== ペン完全修正：選択状態とスマホ操作を安定化 ===== */
+.draw-tool.active,.draw-width.active{
+  background:linear-gradient(145deg,#111111,#3a3a3a)!important;
+  color:#ffffff!important;
+  border-color:#111111!important;
+  box-shadow:0 5px 0 rgba(0,0,0,.28),0 12px 20px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.22)!important;
+}
+.draw-tool.active small{color:#ffffff!important;}
+.draw-color{cursor:pointer!important;}
+#drawCanvasWrap{touch-action:none!important;overscroll-behavior:contain!important;}
+#drawCanvas{display:block!important;background-color:#ffffff!important;}
+
+
+
+/* ===== メモ並び替えスムーズ修正版 ===== */
+.note-card{will-change:transform;}
+.note-drag-handle{
+  width:38px;
+  height:38px;
+  border:none;
+  border-radius:14px;
+  background:rgba(255,255,255,.68);
+  color:#000!important;
+  font-size:1.25rem;
+  font-weight:900;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.85),0 4px 9px rgba(0,0,0,.12);
+  pointer-events:none;
+}
+.note-reorder-mode .scroll{
+  overscroll-behavior:contain;
+}
+.note-reorder-mode .note-swipe{
+  touch-action:none!important;
+}
+.note-reorder-mode .note-swipe:not(.reordering) .note-card{
+  opacity:.82!important;
+  transition:transform .16s ease, opacity .16s ease!important;
+}
+.note-swipe.reordering{
+  z-index:80!important;
+  touch-action:none!important;
+  overflow:visible!important;
+}
+.note-swipe.reordering .note-card{
+  opacity:.98!important;
+  outline:3px solid var(--accent)!important;
+  outline-offset:-3px!important;
+  transition:none!important;
+  box-shadow:0 8px 0 rgba(0,0,0,.18),0 20px 36px rgba(0,0,0,.30),inset 0 2px 0 rgba(255,255,255,.86)!important;
+  transform:translateX(var(--note-swipe-x,0px)) translateY(var(--note-drag-y,0px)) rotateX(1deg) rotateY(0deg) scale(1.025) translateZ(28px)!important;
+}
+.note-swipe.reordering .note-drag-handle{
+  background:#111!important;
+  color:#fff!important;
+}
+@media (hover:hover){
+  .note-reorder-mode .note-card:hover{
+    transform:translateX(var(--note-swipe-x,0px))!important;
+  }
+  .note-swipe.reordering .note-card:hover{
+    transform:translateX(var(--note-swipe-x,0px)) translateY(var(--note-drag-y,0px)) rotateX(1deg) rotateY(0deg) scale(1.025) translateZ(28px)!important;
+  }
+}
+
+
+/* ===== 並び替え長押し固定修正 =====
+   画面スクロールと並び替えが競合しないよう、↕ハンドルだけで即ドラッグ開始 */
+.note-drag-handle{
+  pointer-events:auto!important;
+  touch-action:none!important;
+  -ms-touch-action:none!important;
+  user-select:none!important;
+  -webkit-user-select:none!important;
+  -webkit-touch-callout:none!important;
+  cursor:grab!important;
+}
+.note-drag-handle:active{
+  cursor:grabbing!important;
+  transform:translateY(2px) translateZ(12px)!important;
+}
+.note-card.manual-mode{
+  -webkit-touch-callout:none!important;
+  user-select:none!important;
+  -webkit-user-select:none!important;
+}
+.note-reorder-mode,
+.note-reorder-mode body,
+.note-reorder-mode .app,
+.note-reorder-mode #screen-list,
+.note-reorder-mode #screen-list .scroll,
+.note-reorder-mode #noteList{
+  overscroll-behavior:contain!important;
+  touch-action:none!important;
+}
+.note-reorder-mode #screen-list .scroll{
+  overflow:hidden!important;
+  -webkit-overflow-scrolling:auto!important;
+}
+
+
+
+/* ===== 追加修正：メモ検索・フォルダ余白詰め・3D強化 ===== */
+.memo-search-wrap{
+  padding:10px 12px 6px!important;
+  background:transparent!important;
+  transform-style:preserve-3d;
+  z-index:4;
+}
+.memo-search-box{
+  width:100%;
+  min-height:48px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  border-radius:18px;
+  padding:8px 10px;
+  background:linear-gradient(145deg,#ffffff 0%,#e6ebf2 62%,#bec6d2 100%)!important;
+  color:#000!important;
+  border:1px solid rgba(0,0,0,.18)!important;
+  border-bottom:6px solid rgba(0,0,0,.24)!important;
+  box-shadow:0 12px 0 rgba(0,0,0,.14),0 24px 36px rgba(0,0,0,.24),inset 0 2px 0 rgba(255,255,255,.9)!important;
+  transform:rotateX(6deg) rotateY(-2deg) translateZ(18px)!important;
+}
+.memo-search-icon{font-size:1.25rem;line-height:1;color:#000!important;}
+.memo-search-box input{
+  flex:1;
+  min-width:0;
+  border:none;
+  outline:none;
+  background:transparent!important;
+  color:#000!important;
+  font-size:1.05rem;
+  font-weight:800;
+}
+.memo-search-box input::placeholder{color:#555!important;font-weight:800;}
+.memo-search-clear{
+  width:34px;
+  height:34px;
+  border:none;
+  border-radius:13px;
+  background:linear-gradient(180deg,#ffffff,#dfe4ec)!important;
+  color:#000!important;
+  font-size:1.25rem;
+  font-weight:900;
+  line-height:1;
+  box-shadow:0 5px 0 rgba(0,0,0,.16),0 10px 16px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.85)!important;
+}
+.memo-search-clear:active{transform:translateY(4px)!important;box-shadow:0 2px 0 rgba(0,0,0,.18),0 6px 10px rgba(0,0,0,.18)!important;}
+
+#screen-folders .folder-dashboard{
+  padding:8px 10px 82px!important;
+}
+#screen-folders .folder-hero{
+  margin:0 0 7px!important;
+  gap:8px!important;
+}
+#screen-folders .folder-hero-title{
+  font-size:1.72rem!important;
+}
+#screen-folders .folder-hero-sub{
+  margin-top:2px!important;
+  font-size:.84rem!important;
+}
+#screen-folders .folder-head-actions{gap:6px!important;}
+#screen-folders .folder-icon-action{
+  width:44px!important;
+  height:44px!important;
+  border-radius:16px!important;
+}
+#screen-folders .folder-crumb{
+  padding:0 0 6px!important;
+  gap:6px!important;
+}
+#screen-folders .folder-crumb button{
+  padding:7px 11px!important;
+  font-size:.8rem!important;
+}
+#screen-folders .folder-card-grid{
+  gap:9px!important;
+  padding-bottom:4px!important;
+}
+#screen-folders .folder-section-title{
+  padding:2px 4px 0!important;
+  margin:0!important;
+  font-size:.88rem!important;
+}
+#screen-folders .folder-card-tile{
+  min-height:74px!important;
+  padding:10px 12px!important;
+}
+#screen-folders .folder-card-icon{
+  width:42px!important;
+  height:42px!important;
+  border-radius:14px!important;
+  font-size:1.45rem!important;
+}
+#screen-folders .folder-card-main{gap:10px!important;}
+#screen-folders .folder-card-name{font-size:1.03rem!important;}
+#screen-folders .folder-card-count{margin-top:2px!important;font-size:.72rem!important;}
+#screen-folders .folder-note-empty{
+  padding:11px 8px!important;
+  line-height:1.55!important;
+}
+#screen-folders .folder-swipe-hint{
+  padding:6px 6px 0!important;
+  font-size:.76rem!important;
+  line-height:1.55!important;
+}
+
+:root{
+  --shadow:0 22px 0 rgba(0,0,0,.18),0 36px 58px rgba(0,0,0,.36);
+  --deep-shadow:0 24px 0 rgba(0,0,0,.22),0 42px 66px rgba(0,0,0,.38);
+}
+.note-list{gap:20px!important;}
+.note-swipe:not(.reordering) .note-card{
+  border-bottom:8px solid rgba(0,0,0,.30)!important;
+  box-shadow:0 18px 0 rgba(92,78,0,.26),0 34px 46px rgba(0,0,0,.34),inset 0 3px 0 rgba(255,255,255,.92),inset -12px -12px 24px rgba(0,0,0,.08)!important;
+  transform:translateX(var(--note-swipe-x,0px)) rotateX(9deg) rotateY(-4deg) translateZ(20px)!important;
+}
+.note-swipe:not(.reordering) .note-card:active{
+  transform:translateX(var(--note-swipe-x,0px)) rotateX(4deg) rotateY(-2deg) translateY(9px) translateZ(5px)!important;
+  box-shadow:0 7px 0 rgba(0,0,0,.22),0 17px 26px rgba(0,0,0,.32),inset 0 2px 0 rgba(255,255,255,.75)!important;
+}
+.folder-swipe .folder-card-tile{
+  border-bottom:8px solid rgba(0,0,0,.30)!important;
+  box-shadow:0 18px 0 rgba(0,0,0,.17),0 34px 48px rgba(0,0,0,.32),inset 0 3px 0 rgba(255,255,255,.92),inset -12px -12px 22px rgba(0,0,0,.07)!important;
+  transform:translateX(var(--swipe-x,0px)) rotateX(9deg) rotateY(-4deg) translateZ(20px)!important;
+}
+.folder-swipe .folder-card-tile:active{
+  transform:translateX(var(--swipe-x,0px)) rotateX(4deg) rotateY(-2deg) translateY(9px) translateZ(5px)!important;
+  box-shadow:0 7px 0 rgba(0,0,0,.18),0 16px 24px rgba(0,0,0,.30),inset 0 2px 0 rgba(255,255,255,.80)!important;
+}
+.fab,.folder-primary,.folder-icon-action,.iconbtn,.month-head button,.cal-actions button,.menu-card button,.format-btn,.format-close-btn,.draw-tool,.draw-width,.folder-move-btn{
+  box-shadow:0 12px 0 rgba(0,0,0,.22),0 24px 36px rgba(0,0,0,.30),inset 0 2px 0 rgba(255,255,255,.70)!important;
+  border-bottom:5px solid rgba(0,0,0,.25)!important;
+  transform:rotateX(7deg) rotateY(-2deg) translateZ(18px)!important;
+}
+.fab:active,.folder-primary:active,.folder-icon-action:active,.iconbtn:active,.month-head button:active,.cal-actions button:active,.menu-card button:active,.format-btn:active,.draw-tool:active,.draw-width:active,.folder-move-btn:active{
+  transform:rotateX(3deg) rotateY(-1deg) translateY(8px) translateZ(4px)!important;
+  box-shadow:0 4px 0 rgba(0,0,0,.22),0 10px 16px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.50)!important;
+}
+.bottom{
+  box-shadow:0 -12px 0 rgba(0,0,0,.13),0 -28px 42px rgba(0,0,0,.24),inset 0 2px 0 rgba(255,255,255,.95)!important;
+}
+.cal-grid,.textwrap,.cal-day-panel,.table-block,.menu-card,.format-pop,.folder-move-box{
+  box-shadow:0 18px 0 rgba(0,0,0,.16),0 34px 52px rgba(0,0,0,.32),inset 0 3px 0 rgba(255,255,255,.9)!important;
+  border-bottom:8px solid rgba(0,0,0,.24)!important;
+}
+@media (hover:hover){
+  .note-swipe:not(.reordering) .note-card:hover{
+    transform:translateX(var(--note-swipe-x,0px)) rotateX(6deg) rotateY(2deg) translateY(-5px) translateZ(30px)!important;
+  }
+  .folder-swipe .folder-card-tile:hover{
+    transform:translateX(var(--swipe-x,0px)) rotateX(6deg) rotateY(2deg) translateY(-5px) translateZ(30px)!important;
+  }
+}
+@media (max-width:360px){
+  .memo-search-wrap{padding:8px 10px 4px!important;}
+  .memo-search-box{min-height:44px!important;border-radius:16px!important;}
+  #screen-folders .folder-dashboard{padding-left:8px!important;padding-right:8px!important;}
+}
+
+
+/* ===== メモカード色だけ少し濃くする安定版 ===== */
+.note-card{
+  background:linear-gradient(145deg,#ffef9a 0%,#f8e38f 58%,#ddc35a 100%)!important;
+}
+.note-card.pink{
+  background:linear-gradient(145deg,#ffdfe9 0%,#f9d9e5 58%,#eba3bc 100%)!important;
+}
+.note-card.blue{
+  background:linear-gradient(145deg,#dfeeff 0%,#eef6ff 58%,#9fc8fb 100%)!important;
+}
+.note-card.green{
+  background:linear-gradient(145deg,#e1f4e4 0%,#edf9f0 58%,#a8d8b2 100%)!important;
+}
+.note-card.white{
+  background:linear-gradient(145deg,#f8f8f8 0%,#eceef2 58%,#c9d0da 100%)!important;
+}
+
+
+
+/* ===== 画像削除ボタン強化：スマホでも確実に押せるようにする ===== */
+.image-delete,.cal-image-delete,.drawing-delete{
+  width:34px!important;
+  height:34px!important;
+  min-width:34px!important;
+  min-height:34px!important;
+  z-index:999!important;
+  pointer-events:auto!important;
+  touch-action:none!important;
+  -webkit-touch-callout:none!important;
+  user-select:none!important;
+  -webkit-user-select:none!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+}
+.image-item,.cal-image-item,.drawing-item{overflow:visible!important;}
+.image-item img,.cal-image-item img,.drawing-item img{pointer-events:auto;}
+
+
+
+/* ===== メモ編集ツール上部移動 修正 =====
+   紙の種類・メモ色・文字装飾ツールを編集欄の下固定から上部へ移動 */
+#editor .textwrap{
+  display:flex!important;
+  flex-direction:column!important;
+}
+#editor .palette{
+  position:relative!important;
+  left:auto!important;
+  right:auto!important;
+  top:auto!important;
+  bottom:auto!important;
+  order:-30!important;
+  flex:0 0 auto!important;
+  z-index:6!important;
+  margin:8px 10px 6px!important;
+  padding:8px 9px!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:8px!important;
+  flex-wrap:nowrap!important;
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+  -webkit-overflow-scrolling:touch!important;
+  border-radius:18px!important;
+  white-space:nowrap!important;
+  background:rgba(255,255,255,.82)!important;
+}
+#editor .palette::-webkit-scrollbar{display:none;}
+#editor .palette{
+  scrollbar-width:none;
+}
+#editor .palette .format-btn,
+#editor .palette .swatch,
+#editor .palette .paper-label,
+#editor .palette .paper-select{
+  flex:0 0 auto!important;
+}
+#editor .palette .swatch{
+  width:34px!important;
+  height:34px!important;
+}
+#editor .paper-select{
+  max-width:96px!important;
+}
+#editor textarea{
+  padding:12px 12px 18px!important;
+}
+#editor .image-preview,
+#editor .drawing-preview,
+#editor .table-preview,
+#editor .url-preview{
+  flex:0 0 auto!important;
+}
+
+
+
+/* ===== カレンダー：① 立体カード型 + メモ文字小さめ初期設定 ===== */
+:root{
+  --editor-font-size:20px;
+  --editor-line-height:34px;
+}
+#screen-calendar .month-head{
+  padding:calc(var(--safe-t) + 10px) 12px 10px!important;
+  background:linear-gradient(180deg,#fff27d 0%,#f5dc51 50%,#d8b116 100%)!important;
+  box-shadow:0 8px 0 rgba(139,106,0,.38),0 18px 30px rgba(0,0,0,.20),inset 0 1px 0 rgba(255,255,255,.90)!important;
+}
+#screen-calendar .month-title{
+  font-size:1.34rem!important;
+  font-weight:900!important;
+  color:#000!important;
+  letter-spacing:-.03em;
+}
+#screen-calendar .cal-grid{
+  display:grid!important;
+  grid-template-columns:repeat(7,1fr)!important;
+  gap:8px!important;
+  margin:12px 10px 16px!important;
+  padding:12px 8px 16px!important;
+  border:none!important;
+  border-bottom:none!important;
+  border-radius:20px!important;
+  background:linear-gradient(145deg,#f3f5f8 0%,#d5d9e0 100%)!important;
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.90),0 12px 0 rgba(0,0,0,.10),0 24px 36px rgba(0,0,0,.22)!important;
+  transform:none!important;
+  perspective:900px;
+  overflow:visible!important;
+}
+#screen-calendar .dow{
+  min-height:26px!important;
+  padding:3px 0 5px!important;
+  border:none!important;
+  border-bottom:none!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  color:#000!important;
+  font-size:.84rem!important;
+  font-weight:900!important;
+  transform:none!important;
+}
+#screen-calendar .dow.sun{color:#d01818!important;}
+#screen-calendar .dow.sat{color:#075fd1!important;}
+#screen-calendar .day{
+  min-height:66px!important;
+  padding:7px 4px 5px!important;
+  border-radius:14px!important;
+  border:1px solid rgba(0,0,0,.12)!important;
+  border-bottom:5px solid rgba(0,0,0,.20)!important;
+  background:linear-gradient(145deg,#ffffff 0%,#f8f9fb 58%,#dfe4ec 100%)!important;
+  color:#000!important;
+  box-shadow:0 7px 0 rgba(0,0,0,.13),0 14px 18px rgba(0,0,0,.18),inset 0 2px 0 rgba(255,255,255,.92)!important;
+  transform:rotateX(5deg) rotateY(-2deg) translateZ(6px)!important;
+  transition:transform .14s ease, box-shadow .14s ease, filter .12s ease!important;
+  overflow:hidden!important;
+  justify-content:flex-start!important;
+  align-items:center!important;
+}
+#screen-calendar .day:active{
+  transform:rotateX(2deg) rotateY(-1deg) translateY(5px) translateZ(1px)!important;
+  box-shadow:0 3px 0 rgba(0,0,0,.16),0 8px 12px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.75)!important;
+  filter:brightness(.98)!important;
+}
+#screen-calendar .day.om{
+  opacity:.58!important;
+  color:#999!important;
+  background:linear-gradient(145deg,#f7f7f7 0%,#eceff3 100%)!important;
+}
+#screen-calendar .day-num{
+  position:relative!important;
+  z-index:2!important;
+  display:block!important;
+  width:100%!important;
+  text-align:center!important;
+  font-size:1.05rem!important;
+  line-height:1.05!important;
+  font-weight:900!important;
+  color:#000!important;
+  text-shadow:none!important;
+  background:transparent!important;
+  padding:0!important;
+  margin:0!important;
+}
+#screen-calendar .day.sun .day-num,
+#screen-calendar .day.holiday .day-num{color:#c90000!important;}
+#screen-calendar .day.sat .day-num{color:#005fd7!important;}
+#screen-calendar .holiday-name{
+  position:relative!important;
+  z-index:2!important;
+  display:block!important;
+  margin-top:3px!important;
+  padding:0 2px!important;
+  max-width:100%!important;
+  color:#c90000!important;
+  background:transparent!important;
+  font-size:.46rem!important;
+  line-height:1.05!important;
+  font-weight:900!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+#screen-calendar .cal-memo{
+  position:relative!important;
+  z-index:2!important;
+  display:block!important;
+  margin-top:3px!important;
+  max-width:100%!important;
+  color:#111!important;
+  font-size:.50rem!important;
+  line-height:1.05!important;
+  font-weight:900!important;
+  letter-spacing:-.04em!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  text-align:center!important;
+}
+#screen-calendar .day.has:not(.has-image)::after{
+  width:6px!important;
+  height:6px!important;
+  bottom:4px!important;
+  background:#00897b!important;
+  box-shadow:0 1px 2px rgba(0,0,0,.25)!important;
+}
+#screen-calendar .day.selected:not(.has-image){
+  background:linear-gradient(145deg,#58a9ff 0%,#0b7ee8 58%,#075bb0 100%)!important;
+  border-color:rgba(0,0,0,.18)!important;
+  border-bottom-color:rgba(0,45,105,.65)!important;
+  box-shadow:0 7px 0 rgba(0,61,139,.45),0 16px 24px rgba(0,0,0,.28),inset 0 2px 0 rgba(255,255,255,.60)!important;
+  outline:none!important;
+  transform:rotateX(3deg) rotateY(-1deg) translateY(-2px) translateZ(18px)!important;
+}
+#screen-calendar .day.selected:not(.has-image) .day-num,
+#screen-calendar .day.selected:not(.has-image) .cal-memo,
+#screen-calendar .day.selected:not(.has-image) .holiday-name{
+  color:#fff!important;
+  text-shadow:0 1px 2px rgba(0,0,0,.35)!important;
+}
+#screen-calendar .day.today:not(.selected){
+  outline:3px solid #111!important;
+  outline-offset:-3px!important;
+}
+#screen-calendar .day.has-image{
+  border-radius:14px!important;
+  border:1px solid rgba(0,0,0,.18)!important;
+  border-bottom:5px solid rgba(0,0,0,.25)!important;
+  box-shadow:0 7px 0 rgba(0,0,0,.17),0 14px 20px rgba(0,0,0,.23),inset 0 2px 0 rgba(255,255,255,.40)!important;
+  transform:rotateX(5deg) rotateY(-2deg) translateZ(6px)!important;
+  overflow:hidden!important;
+}
+#screen-calendar .day.has-image .day-num{
+  color:#fff!important;
+  text-shadow:0 1px 5px rgba(0,0,0,.90)!important;
+  font-size:.95rem!important;
+  padding:2px 4px!important;
+  background:rgba(0,0,0,.24)!important;
+  border-radius:8px!important;
+  margin-top:0!important;
+  width:auto!important;
+}
+#screen-calendar .day.has-image .cal-memo{
+  color:#fff!important;
+  text-shadow:0 1px 4px rgba(0,0,0,.95)!important;
+  background:rgba(0,0,0,.30)!important;
+  border-radius:6px!important;
+  padding:1px 3px!important;
+  max-width:92%!important;
+}
+#screen-calendar .cal-day-panel{
+  border-radius:22px!important;
+}
+#screen-calendar .cal-textarea{
+  font-size:.92rem!important;
+  line-height:1.55!important;
+}
+@media (max-width:360px){
+  #screen-calendar .cal-grid{gap:6px!important;margin:10px 8px 14px!important;padding:10px 6px 14px!important;}
+  #screen-calendar .day{min-height:58px!important;border-radius:12px!important;padding:6px 3px 4px!important;}
+  #screen-calendar .day-num{font-size:.95rem!important;}
+  #screen-calendar .cal-memo{font-size:.46rem!important;}
+}
+
+
+/* ===== 追加調整：カレンダー少し大きく・3行メモ・フォルダ透け修正・テカテカ感 ===== */
+#screen-calendar .cal-grid{
+  gap:9px!important;
+  margin:10px 8px 16px!important;
+  padding:14px 10px 18px!important;
+  border-radius:22px!important;
+}
+#screen-calendar .day{
+  min-height:74px!important;
+  padding:8px 4px 5px!important;
+  border-radius:15px!important;
+}
+#screen-calendar .day-num{
+  font-size:1.12rem!important;
+}
+#screen-calendar .holiday-name{
+  font-size:.43rem!important;
+  line-height:1.05!important;
+}
+#screen-calendar .cal-memo{
+  font-size:.43rem!important;
+  line-height:1.12!important;
+  margin-top:2px!important;
+  white-space:pre-line!important;
+  word-break:break-all!important;
+  display:-webkit-box!important;
+  -webkit-box-orient:vertical!important;
+  -webkit-line-clamp:3!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  max-height:1.52rem!important;
+}
+#screen-calendar .day.has-image .cal-memo{
+  max-height:1.52rem!important;
+  white-space:pre-line!important;
+  -webkit-line-clamp:3!important;
+}
+#screen-folders .folder-swipe:not(.open) .folder-card-actions{
+  display:none!important;
+  opacity:0!important;
+  visibility:hidden!important;
+}
+#screen-folders .folder-swipe.open .folder-card-actions{
+  display:grid!important;
+  opacity:1!important;
+  visibility:visible!important;
+}
+#screen-folders .folder-card-actions{
+  background:transparent!important;
+}
+#screen-folders .folder-card-actions button{
+  color:#fff!important;
+  -webkit-text-fill-color:#fff!important;
+  text-shadow:0 1px 2px rgba(0,0,0,.45)!important;
+}
+#screen-folders .folder-card-tile{
+  background:
+    linear-gradient(120deg,rgba(255,255,255,.92) 0%,rgba(255,255,255,.48) 18%,rgba(255,255,255,0) 38%),
+    radial-gradient(circle at 18% 8%,rgba(255,255,255,.92),rgba(255,255,255,0) 36%),
+    linear-gradient(145deg,var(--fc-bg,#ffffff) 0%,#ffffff 48%,rgba(255,255,255,.48) 62%,rgba(0,0,0,.08) 100%)!important;
+  overflow:hidden!important;
+}
+#screen-folders .folder-card-tile::after{
+  content:"";
+  position:absolute;
+  left:10px;
+  right:10px;
+  top:7px;
+  height:34%;
+  border-radius:16px;
+  background:linear-gradient(180deg,rgba(255,255,255,.78),rgba(255,255,255,.16));
+  pointer-events:none;
+  z-index:1;
+}
+#screen-folders .folder-card-main,
+#screen-folders .folder-card-arrow{
+  position:relative;
+  z-index:2;
+}
+#screen-folders .folder-card-icon{
+  background:linear-gradient(145deg,rgba(255,255,255,1),rgba(255,255,255,.45))!important;
+}
+@media (max-width:360px){
+  #screen-calendar .cal-grid{gap:7px!important;margin:8px 7px 14px!important;padding:12px 7px 16px!important;}
+  #screen-calendar .day{min-height:64px!important;border-radius:13px!important;padding:7px 3px 4px!important;}
+  #screen-calendar .day-num{font-size:1rem!important;}
+  #screen-calendar .cal-memo{font-size:.40rem!important;max-height:1.36rem!important;}
+}
+
+</style>
+<meta name="theme-color" content="#d1d5db">
+<meta name="description" content="GitHub Pagesで公開できる3Dメモ帳アプリ">
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="3Dメモ帳">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body>
+<!-- 3Dデザイン追加版：背景グレー・文字黒 -->
+<div class="app">
+
+
+  <section class="screen active" id="screen-list">
+    <div class="memo-search-wrap">
+      <div class="memo-search-box">
+        <span class="memo-search-icon">🔍</span>
+        <input type="search" id="memoSearchInput" placeholder="メモ検索" autocomplete="off" oninput="onMemoSearchInput(this.value)">
+        <button class="memo-search-clear" id="memoSearchClear" onclick="clearSearch()" title="検索を消す">×</button>
+      </div>
+    </div>
+    <div class="scroll"><div class="note-list" id="noteList"></div></div>
+  </section>
+
+  <section class="screen" id="screen-folders">
+    <div class="scroll folder-dashboard">
+      <div class="folder-hero">
+        <div>
+          <div class="folder-hero-title">📁 フォルダ</div>
+          <div class="folder-hero-sub" id="folderDashboardSub">フォルダを長いカードで選択</div>
+        </div>
+        <div class="folder-head-actions">
+          <button class="folder-icon-action" onclick="addFolderPrompt(folderDashboardParent,'folders')" title="フォルダ追加">＋</button>
+          <button class="folder-icon-action" onclick="toggleFolderMenu(event)" title="メニュー">⋮</button>
+          <div class="folder-menu-pop" id="folderMenuPop">
+            <button onclick="folderMenuAction('export')">📤 バックアップ</button>
+            <button onclick="folderMenuAction('import')">📥 インポート</button>
+            <button onclick="folderMenuAction('starter')">📝 初期メモ追加</button>
+            <button class="danger" onclick="folderMenuAction('reset')">🗑 全削除</button>
+          </div>
+        </div>
+      </div>
+      <div class="folder-crumb" id="folderBreadcrumb"></div>
+      <div class="folder-card-grid" id="folderDashboardGrid"></div><div class="folder-swipe-hint">フォルダを左にスワイプすると編集・中に追加・削除ができます</div>
+    </div>
+  </section>
+
+  <section class="screen" id="screen-calendar">
+    <div class="month-head">
+      <button onclick="moveMonth(-1)">‹</button>
+      <div class="month-title" id="calTitle"></div>
+      <button onclick="moveMonth(1)">›</button>
+    </div>
+    <div class="scroll">
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="cal-day-panel" id="calDayPanel">
+        <div class="cal-panel-head">
+          <div class="cal-panel-date" id="calPanelDate"></div>
+          <div class="cal-actions">
+            <button onclick="document.getElementById('calImageInput').click()">画像追加</button>
+            <button class="danger" onclick="deleteCalendarEntry()">削除</button>
+          </div>
+        </div>
+        <textarea class="cal-textarea" id="calText" placeholder="この日のカレンダーメモを書く..." oninput="onCalendarTextInput()"></textarea>
+        <div class="url-preview cal-url-preview" id="calUrlPreview"></div>
+        <div class="cal-image-preview" id="calImagePreview"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen" id="screen-settings">
+    <div class="scroll panel">
+      <h2>⚙️ 設定</h2>
+      <div class="menu-card">
+        <b>フォルダ</b>
+        <p>フォルダ名の編集と、フォルダの中へのフォルダ追加ができます。例：レシピ → 和食 → 洋食 → 中華</p>
+        <button onclick="addFolderPrompt()">今の場所にフォルダを追加</button>
+        <div class="folder-list" id="folderManageList"></div>
+      </div>
+      <div class="menu-card">
+        <b>バックアップ</b>
+        <p>今のメモをJSONファイルとして保存できます。</p>
+        <button onclick="exportNotes()">エクスポート</button>
+      </div>
+      <div class="menu-card">
+        <b>復元</b>
+        <p>以前エクスポートしたJSONを読み込みます。</p>
+        <input type="file" id="importFile" accept=".json" class="hidden" onchange="importNotes(event)">
+        <button onclick="document.getElementById('importFile').click()">インポート</button>
+      </div>
+      <div class="menu-card">
+        <b>初期メモを追加</b>
+        <p>スクリーンショットのサンプルメモをもう一度追加します。</p>
+        <button onclick="addStarterNotes(false)">追加する</button>
+      </div>
+      <div class="menu-card">
+        <b style="color:#c0392b">全削除</b>
+        <p>このメモ帳のメモだけ削除します。</p>
+        <button class="danger" onclick="resetNotes()">すべて削除</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="fab-area" id="fabArea">
+    <button class="fab draw" onclick="newDrawingNote()" title="新規手書きメモ">✏️</button>
+    <button class="fab" onclick="newNote()" title="新規メモ">＋</button>
+  </div>
+
+  <nav class="bottom">
+    <button class="nav active" id="tab-list" onclick="showScreen('list')">📝<span>メモ</span></button>
+    <button class="nav" id="tab-folders" onclick="showScreen('folders')">📁<span>フォルダ</span></button>
+    <button class="nav" id="tab-calendar" onclick="showScreen('calendar')">📅<span>カレンダー</span></button>
+  </nav>
+
+
+
+  <div class="editor" id="editor">
+    <div class="editor-top">
+      <button class="iconbtn" onclick="closeEditor()">←</button>
+      <div class="editor-title" id="editorTitle">新規メモ</div>
+      <div class="edit-tools">
+        <button class="iconbtn" onclick="moveCurrentToFolder()" title="フォルダ移動">📁</button>
+        <button class="iconbtn" onclick="document.getElementById('imageInput').click()" title="画像追加">🖼️</button>
+        <button class="iconbtn" onclick="openDrawing(currentId)" title="手書き追加">✏️</button>
+        <button class="iconbtn" onclick="addTableToCurrent()" title="表を追加">▦</button>
+        <button class="iconbtn" onclick="saveCurrent()" title="保存">✓</button>
+        <button class="iconbtn" onclick="deleteCurrent()" title="削除">🗑</button>
+      </div>
+    </div>
+    <div class="meta">
+      <span id="editorDate"></span>
+      <span id="editorFolder" class="editor-folder"></span>
+      <span id="saveState">保存済み</span>
+    </div>
+    <div class="textwrap">
+      <div class="image-preview" id="imagePreview"></div>
+      <div class="drawing-preview" id="drawingPreview"></div>
+      <div class="table-preview" id="tablePreview"></div>
+      <div class="url-preview" id="urlPreview"></div>
+      <textarea id="editorText" oninput="onEditInput()" placeholder="メモを書く..."></textarea>
+      <div class="palette">
+        <button class="format-btn" onclick="openFontSizeMenu()">AA</button>
+        <button class="format-btn color-btn" id="fontColorBtn" style="--fc:#111111" onclick="openFontColorMenu()">A</button>
+        <button class="format-btn" id="boldBtn" onclick="toggleFontBold()"><b>B</b></button>
+        <button class="format-btn" id="italicBtn" onclick="toggleFontItalic()"><i>I</i></button>
+        <button class="swatch yellow" data-color="yellow" onclick="setColor('yellow')"></button>
+        <button class="swatch pink" data-color="pink" onclick="setColor('pink')"></button>
+        <button class="swatch blue" data-color="blue" onclick="setColor('blue')"></button>
+        <button class="swatch green" data-color="green" onclick="setColor('green')"></button>
+        <button class="swatch white sel" data-color="white" onclick="setColor('white')"></button>
+        <span class="paper-label">紙</span>
+        <select class="paper-select" id="paperPatternSelect" onchange="setPaperPattern(this.value)">
+          <option value="plain">白紙</option>
+          <option value="lines">横線</option>
+          <option value="grid">方眼</option>
+          <option value="dots">ドット</option>
+        </select>
+      </div>
+      <div class="format-pop" id="fontSizeMenu">
+        <div class="format-pop-head">文字サイズ</div>
+        <div class="format-size-list">
+          <button class="format-size-btn" data-size="44" onclick="setFontSize(44)">巨大<span class="sub">かなり大きい</span></button>
+          <button class="format-size-btn" data-size="34" onclick="setFontSize(34)">大<span class="sub">少し大きい</span></button>
+          <button class="format-size-btn" data-size="26" onclick="setFontSize(26)">ノーマル<span class="sub">標準サイズ</span></button>
+          <button class="format-size-btn" data-size="20" onclick="setFontSize(20)">小さい<span class="sub">少し小さい</span></button>
+          <button class="format-size-btn" data-size="16" onclick="setFontSize(16)">とても小さい<span class="sub">細かいメモ向け</span></button>
+        </div>
+        <div class="format-pop-actions"><button class="format-close-btn" onclick="closeFormatMenus()">閉じる</button></div>
+      </div>
+      <div class="format-pop" id="fontColorMenu">
+        <div class="format-pop-head">文字色</div>
+        <div class="format-color-grid">
+          <button class="format-color-chip" data-color="#111111" style="background:#111111" onclick="setFontColor('#111111')"></button>
+          <button class="format-color-chip" data-color="#f44336" style="background:#f44336" onclick="setFontColor('#f44336')"></button>
+          <button class="format-color-chip" data-color="#e91e63" style="background:#e91e63" onclick="setFontColor('#e91e63')"></button>
+          <button class="format-color-chip" data-color="#9c27b0" style="background:#9c27b0" onclick="setFontColor('#9c27b0')"></button>
+          <button class="format-color-chip" data-color="#3f51b5" style="background:#3f51b5" onclick="setFontColor('#3f51b5')"></button>
+          <button class="format-color-chip" data-color="#2196f3" style="background:#2196f3" onclick="setFontColor('#2196f3')"></button>
+          <button class="format-color-chip" data-color="#009688" style="background:#009688" onclick="setFontColor('#009688')"></button>
+          <button class="format-color-chip" data-color="#4caf50" style="background:#4caf50" onclick="setFontColor('#4caf50')"></button>
+          <button class="format-color-chip" data-color="#8bc34a" style="background:#8bc34a" onclick="setFontColor('#8bc34a')"></button>
+          <button class="format-color-chip" data-color="#ffc107" style="background:#ffc107" onclick="setFontColor('#ffc107')"></button>
+          <button class="format-color-chip" data-color="#ff9800" style="background:#ff9800" onclick="setFontColor('#ff9800')"></button>
+          <button class="format-color-chip" data-color="#795548" style="background:#795548" onclick="setFontColor('#795548')"></button>
+        </div>
+        <div class="format-pop-actions"><button class="format-close-btn" onclick="closeFormatMenus()">閉じる</button></div>
+      </div>
+    </div>
+  </div>
+  <input type="file" id="imageInput" accept="image/*" multiple class="hidden" onchange="addImageToCurrent(event)">
+  <input type="file" id="calImageInput" accept="image/*" multiple class="hidden" onchange="addCalendarImages(event)">
+  <div class="draw-editor" id="drawEditor">
+    <div class="draw-top">
+      <button class="iconbtn" onclick="cancelDrawing()">←</button>
+      <div class="draw-title">✏️ 手書きメモ</div>
+      <button class="iconbtn" onclick="drawUndo()" title="ひとつ戻す">↩️</button>
+      <button class="iconbtn" onclick="drawRedo()" title="やり直す">↪️</button>
+      <button class="iconbtn" onclick="drawClearAll()" title="全部消す">🗑</button>
+      <button class="iconbtn" onclick="saveDrawing()" title="保存して閉じる">✅</button>
+    </div>
+    <div class="draw-tools">
+      <button class="draw-tool active" data-tool="pen" onclick="setDrawTool('pen')">✏️<small>ペン</small></button>
+      <button class="draw-tool" data-tool="marker" onclick="setDrawTool('marker')">🖍️<small>マーカー</small></button>
+      <button class="draw-tool" data-tool="eraser" onclick="setDrawTool('eraser')">⬜<small>消しゴム</small></button>
+      <button class="draw-tool" data-tool="line" onclick="setDrawTool('line')">╱<small>直線</small></button>
+      <button class="draw-tool" data-tool="arrow" onclick="setDrawTool('arrow')">➝<small>矢印</small></button>
+      <button class="draw-tool" data-tool="rect" onclick="setDrawTool('rect')">▭<small>四角</small></button>
+      <button class="draw-tool" data-tool="ellipse" onclick="setDrawTool('ellipse')">◯<small>丸</small></button>
+      <button class="draw-tool" data-tool="text" onclick="setDrawTool('text')">🅰️<small>文字</small></button>
+    </div>
+    <div class="draw-opts">
+      <button type="button" class="draw-color active" data-c="#111111" data-color="#111111" style="--draw-color:#111111;background:#111111" onclick="setDrawColor(this.dataset.color)"></button>
+      <button type="button" class="draw-color" data-c="#e0245e" data-color="#e0245e" style="--draw-color:#e0245e;background:#e0245e" onclick="setDrawColor(this.dataset.color)"></button>
+      <button type="button" class="draw-color" data-c="#2d6cdf" data-color="#2d6cdf" style="--draw-color:#2d6cdf;background:#2d6cdf" onclick="setDrawColor(this.dataset.color)"></button>
+      <button type="button" class="draw-color" data-c="#2e9e44" data-color="#2e9e44" style="--draw-color:#2e9e44;background:#2e9e44" onclick="setDrawColor(this.dataset.color)"></button>
+      <button type="button" class="draw-color" data-c="#f08c00" data-color="#f08c00" style="--draw-color:#f08c00;background:#f08c00" onclick="setDrawColor(this.dataset.color)"></button>
+      <button type="button" class="draw-color" data-c="#8e44ad" data-color="#8e44ad" style="--draw-color:#8e44ad;background:#8e44ad" onclick="setDrawColor(this.dataset.color)"></button>
+      <button class="draw-width" data-w="3" onclick="setDrawWidth(3)">細</button>
+      <button class="draw-width active" data-w="6" onclick="setDrawWidth(6)">中</button>
+      <button class="draw-width" data-w="12" onclick="setDrawWidth(12)">太</button>
+    </div>
+    <div class="draw-canvas-wrap" id="drawCanvasWrap"><canvas id="drawCanvas"></canvas>
+      <div class="draw-text-box" id="drawTextBox">
+        <textarea id="drawTextInput" placeholder="文字を入力"></textarea>
+        <div class="draw-text-box-actions">
+          <button class="cancel" onclick="cancelDrawTextBox()">キャンセル</button>
+          <button class="ok" onclick="commitDrawTextBox()">確定</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="lightbox" id="lightbox" onclick="closeLightbox(event)">
+    <button class="lightbox-close" onclick="closeLightbox(event)">×</button>
+    <img id="lightboxImg" alt="拡大画像" onclick="event.stopPropagation()">
+  </div>
+
+  <div class="folder-move" id="folderMove" onclick="if(event.target===this)hideFolderMove()">
+    <div class="folder-move-box">
+      <div class="folder-move-head">
+        <div>
+          <div class="folder-move-title">移動先フォルダ</div>
+          <div class="folder-move-hint">タップするだけで移動できます</div>
+        </div>
+        <button class="folder-move-close" onclick="hideFolderMove()" title="閉じる">×</button>
+      </div>
+      <div class="folder-move-list" id="folderMoveList"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ストレージ安全ラッパー（localStorageの容量不足時はIndexedDBへ退避保存）
+const __memStore = {};
+const KEY = 'new_colormemo_notes_v1';
+const FOLDER_KEY = 'new_colormemo_folders_v1';
+const CAL_KEY = 'new_colormemo_calendar_v1';
+const SORT_KEY = 'new_colormemo_sort_v1';
+const STORE_META_KEY = 'new_colormemo_store_meta_v1';
+const IDB_NAME = 'new_colormemo_storage_v2';
+const IDB_STORE = 'kv';
+let __memoDbPromise = null;
+let __storageErrorShown = false;
+
+function setSaveStateText(text){
+  const el = document.getElementById('saveState');
+  if(el) el.textContent = text;
+}
+function showStorageError(err){
+  console.warn('memo save error', err);
+  setSaveStateText('保存エラー');
+  if(!__storageErrorShown){
+    __storageErrorShown = true;
+    alert('保存容量がいっぱい、またはブラウザの保存が制限されています。画像を小さくしてIndexedDBへ保存するよう修正済みですが、念のためバックアップもしてください。');
+  }
+}
+function lsGet(k){
+  try{
+    const v = localStorage.getItem(k);
+    return v!==null ? v : (k in __memStore ? __memStore[k] : null);
+  }catch(e){
+    return (k in __memStore) ? __memStore[k] : null;
+  }
+}
+function lsSet(k,v){
+  __memStore[k]=v;
+  try{
+    localStorage.setItem(k,v);
+    return true;
+  }catch(e){
+    return false;
+  }
+}
+function openMemoDb(){
+  if(!('indexedDB' in window)) return Promise.reject(new Error('IndexedDBが使えません'));
+  if(__memoDbPromise) return __memoDbPromise;
+  __memoDbPromise = new Promise((resolve,reject)=>{
+    const req = indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if(!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE, {keyPath:'key'});
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error || new Error('IndexedDB open error'));
+    req.onblocked = () => reject(new Error('IndexedDB blocked'));
+  });
+  return __memoDbPromise;
+}
+function idbGetItem(k){
+  return openMemoDb().then(db=>new Promise((resolve,reject)=>{
+    const tx = db.transaction(IDB_STORE, 'readonly');
+    const store = tx.objectStore(IDB_STORE);
+    const req = store.get(k);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error || new Error('IndexedDB read error'));
+  }));
+}
+function idbSetItem(k,v,updatedAt){
+  const ts = Number(updatedAt) || Date.now();
+  return openMemoDb().then(db=>new Promise((resolve,reject)=>{
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    const store = tx.objectStore(IDB_STORE);
+    store.put({key:k, value:v, updatedAt:ts});
+    tx.oncomplete = () => resolve(true);
+    tx.onerror = () => reject(tx.error || new Error('IndexedDB write error'));
+    tx.onabort = () => reject(tx.error || new Error('IndexedDB write aborted'));
+  }));
+}
+let __storeMeta = loadStoreMeta();
+function loadStoreMeta(){
+  try{
+    const raw = localStorage.getItem(STORE_META_KEY);
+    const obj = raw ? JSON.parse(raw) : {};
+    return obj && typeof obj === 'object' && !Array.isArray(obj) ? obj : {};
+  }catch(e){ return {}; }
+}
+function saveStoreMeta(){
+  try{ localStorage.setItem(STORE_META_KEY, JSON.stringify(__storeMeta)); }catch(e){}
+}
+function markStoreWrite(k, localOk, ts){
+  __storeMeta[k] = {updatedAt:Number(ts)||Date.now(), localOk:!!localOk};
+  saveStoreMeta();
+}
+function localStoreIsNewEnough(k, idbUpdatedAt){
+  const meta = __storeMeta && __storeMeta[k];
+  if(!meta || !meta.localOk) return false;
+  if(lsGet(k) === null) return false;
+  return Number(meta.updatedAt || 0) >= Number(idbUpdatedAt || 0);
+}
+function saveData(k,v){
+  const ts = Date.now();
+  const localOk = lsSet(k,v);
+  markStoreWrite(k, localOk, ts);
+  idbSetItem(k,v,ts).then(()=>{
+    if(!localOk) setSaveStateText('保存済み');
+  }).catch(err=>{
+    if(!localOk) showStorageError(err);
+  });
+  return localOk;
+}
+function normalizeNotesArray(saved){
+  if(!Array.isArray(saved)) return null;
+  return saved.map(n=>({
+    folderId:'', images:[], drawings:[], tables:[], paper:'plain', fontSize:20, fontColor:'#111111', fontBold:false, fontItalic:false,
+    ...n,
+    id:n.id || uid(),
+    text:n.text || htmlToPlainTextSafe(n.html || ''),
+    color:n.color || 'white',
+    images:Array.isArray(n.images)?n.images:[],
+    drawings:Array.isArray(n.drawings)?n.drawings:[],
+    tables:Array.isArray(n.tables)?n.tables:[],
+    paper:n.paper||n.paperType||'plain',
+    fontSize:Number(n.fontSize)||20,
+    fontColor:n.fontColor||'#111111',
+    fontBold:!!n.fontBold,
+    fontItalic:!!n.fontItalic,
+    createdAt:n.createdAt || new Date().toISOString(),
+    updatedAt:n.updatedAt || n.createdAt || new Date().toISOString()
+  }));
+}
+function maxUpdatedInNotes(arr){
+  if(!Array.isArray(arr)) return 0;
+  return arr.reduce((m,n)=>Math.max(m, Date.parse((n && (n.updatedAt || n.createdAt)) || '') || 0), 0);
+}
+function looksLikeStarterNotes(arr){
+  if(!Array.isArray(arr)) return false;
+  const text = arr.map(n=>String(n && n.text || '')).join('\n');
+  return arr.length >= 8 && text.includes('スマホやっては行けないこと') && text.includes('画像編集');
+}
+function shouldUseStoredNotes(incoming, current, idbUpdatedAt){
+  if(!Array.isArray(incoming) || !incoming.length) return false;
+  if(!Array.isArray(current) || !current.length) return true;
+  if(looksLikeStarterNotes(current) && !looksLikeStarterNotes(incoming)) return true;
+  const inMax = maxUpdatedInNotes(incoming);
+  const curMax = maxUpdatedInNotes(current);
+  if(inMax > curMax) return true;
+  if(inMax === curMax && incoming.length > current.length) return true;
+  if(idbUpdatedAt && inMax >= curMax && JSON.stringify(incoming).length > JSON.stringify(current).length) return true;
+  return false;
+}
+function maxUpdatedInCalendarEntries(obj){
+  if(!obj || typeof obj !== 'object' || Array.isArray(obj)) return 0;
+  return Object.values(obj).reduce((m,e)=>Math.max(m, Date.parse((e && e.updatedAt) || '') || 0), 0);
+}
+function calendarEntryCount(obj){
+  if(!obj || typeof obj !== 'object' || Array.isArray(obj)) return 0;
+  return Object.values(obj).filter(e=>e && (((e.text || '').trim()) || (Array.isArray(e.images) && e.images.length))).length;
+}
+function shouldUseStoredCalendarEntries(incoming, current){
+  if(!incoming || typeof incoming !== 'object' || Array.isArray(incoming)) return false;
+  if(!current || typeof current !== 'object' || Array.isArray(current) || !Object.keys(current).length) return true;
+  const inMax = maxUpdatedInCalendarEntries(incoming);
+  const curMax = maxUpdatedInCalendarEntries(current);
+  if(inMax > curMax) return true;
+  if(inMax === curMax && calendarEntryCount(incoming) > calendarEntryCount(current)) return true;
+  return false;
+}
+async function restoreFromIndexedDBOnStart(){
+  try{
+    const [noteItem, folderItem, calItem] = await Promise.all([
+      idbGetItem(KEY).catch(()=>null),
+      idbGetItem(FOLDER_KEY).catch(()=>null),
+      idbGetItem(CAL_KEY).catch(()=>null)
+    ]);
+    let changed = false;
+    if(noteItem && noteItem.value && !localStoreIsNewEnough(KEY, noteItem.updatedAt)){
+      const parsedNotes = normalizeNotesArray(JSON.parse(noteItem.value));
+      if(shouldUseStoredNotes(parsedNotes, notes, noteItem.updatedAt)){
+        notes = parsedNotes;
+        changed = true;
+      }
+    }
+    if(folderItem && folderItem.value && !localStoreIsNewEnough(FOLDER_KEY, folderItem.updatedAt)){
+      const parsedFolders = normalizeFolders(JSON.parse(folderItem.value));
+      if(Array.isArray(parsedFolders) && (parsedFolders.length > folders.length || !folders.length)){
+        folders = parsedFolders;
+        changed = true;
+      }
+    }
+    if(calItem && calItem.value && !localStoreIsNewEnough(CAL_KEY, calItem.updatedAt)){
+      const parsedCal = JSON.parse(calItem.value);
+      if(shouldUseStoredCalendarEntries(parsedCal, calendarEntries)){
+        calendarEntries = parsedCal;
+        changed = true;
+      }
+    }
+    if(changed){
+      renderAll();
+      if(currentId && notes.some(n=>n.id===currentId)) openNote(currentId);
+    }
+  }catch(e){
+    console.warn('IndexedDB restore skipped', e);
+  }
+}
+let notes = loadNotes();
+let folders = loadFolders();
+let calendarEntries = loadCalendarEntries();
+let selectedFolder = 'uncat';
+let currentId = null;
+let currentDirty = false;
+let lastSavedText = '';
+let calendarDate = new Date();
+let selectedCalDate = dateKey(new Date());
+let calSaveTimer = null;
+
+function loadNotes(){
+  try{
+    const saved = JSON.parse(lsGet(KEY) || 'null');
+    const normalized = normalizeNotesArray(saved);
+    if(normalized) return normalized;
+  }catch(e){}
+  return starterNotes();
+}
+function normalizeFolders(arr){
+  if(!Array.isArray(arr)) return [];
+  const cleaned = arr.filter(f=>f && f.id && f.name).map(f=>({
+    id:String(f.id), name:String(f.name).trim(), parentId:f.parentId ? String(f.parentId) : ''
+  })).filter(f=>f.name);
+  const ids = new Set(cleaned.map(f=>f.id));
+  cleaned.forEach(f=>{ if(!ids.has(f.parentId) || f.parentId===f.id) f.parentId=''; });
+  // 循環参照があった場合はトップ階層に戻す
+  cleaned.forEach(f=>{
+    const seen = new Set([f.id]);
+    let p = f.parentId;
+    while(p){
+      if(seen.has(p)){ f.parentId=''; break; }
+      seen.add(p);
+      const parent = cleaned.find(x=>x.id===p);
+      p = parent ? parent.parentId : '';
+    }
+  });
+  return cleaned;
+}
+function loadFolders(){
+  try{
+    const saved = JSON.parse(lsGet(FOLDER_KEY) || 'null');
+    return normalizeFolders(saved);
+  }catch(e){}
+  return [];
+}
+function loadCalendarEntries(){
+  try{
+    const saved = JSON.parse(lsGet(CAL_KEY) || 'null');
+    if(saved && typeof saved === 'object' && !Array.isArray(saved)) return saved;
+  }catch(e){}
+  return {};
+}
+function persist(){ return saveData(KEY, JSON.stringify(notes)); }
+function persistFolders(){ return saveData(FOLDER_KEY, JSON.stringify(folders)); }
+function persistCalendar(){ return saveData(CAL_KEY, JSON.stringify(calendarEntries)); }
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function pad(n){ return String(n).padStart(2,'0'); }
+function dateKey(d){ const x = new Date(d); return `${x.getFullYear()}-${pad(x.getMonth()+1)}-${pad(x.getDate())}`; }
+
+function nthMonday(year, month, nth){
+  const first = new Date(year, month-1, 1);
+  const offset = (8 - first.getDay()) % 7;
+  return 1 + offset + (nth-1)*7;
+}
+function equinoxDay(year, type){
+  if(type === 'spring'){
+    if(year <= 1979) return Math.floor(20.8357 + 0.242194*(year-1980) - Math.floor((year-1983)/4));
+    if(year <= 2099) return Math.floor(20.8431 + 0.242194*(year-1980) - Math.floor((year-1980)/4));
+    return Math.floor(21.851 + 0.242194*(year-2000) - Math.floor((year-2000)/4));
+  }
+  if(year <= 1979) return Math.floor(23.2588 + 0.242194*(year-1980) - Math.floor((year-1983)/4));
+  if(year <= 2099) return Math.floor(23.2488 + 0.242194*(year-1980) - Math.floor((year-1980)/4));
+  return Math.floor(24.2488 + 0.242194*(year-2000) - Math.floor((year-2000)/4));
+}
+function addHoliday(map, year, month, day, name){
+  map[`${year}-${pad(month)}-${pad(day)}`] = name;
+}
+function baseJapaneseHolidays(year){
+  const map = {};
+  addHoliday(map, year, 1, 1, '元日');
+  if(year >= 2000) addHoliday(map, year, 1, nthMonday(year,1,2), '成人の日');
+  else if(year >= 1949) addHoliday(map, year, 1, 15, '成人の日');
+
+  if(year >= 1967) addHoliday(map, year, 2, 11, '建国記念の日');
+  if(year >= 2020) addHoliday(map, year, 2, 23, '天皇誕生日');
+
+  if(year >= 1949) addHoliday(map, year, 3, equinoxDay(year,'spring'), '春分の日');
+
+  if(year >= 2007) addHoliday(map, year, 4, 29, '昭和の日');
+  else if(year >= 1989) addHoliday(map, year, 4, 29, 'みどりの日');
+  else if(year >= 1949) addHoliday(map, year, 4, 29, '天皇誕生日');
+
+  if(year >= 1949){
+    addHoliday(map, year, 5, 3, '憲法記念日');
+    if(year >= 2007) addHoliday(map, year, 5, 4, 'みどりの日');
+    addHoliday(map, year, 5, 5, 'こどもの日');
+  }
+
+  if(year === 2020) addHoliday(map, year, 7, 23, '海の日');
+  else if(year === 2021) addHoliday(map, year, 7, 22, '海の日');
+  else if(year >= 2003) addHoliday(map, year, 7, nthMonday(year,7,3), '海の日');
+  else if(year >= 1996) addHoliday(map, year, 7, 20, '海の日');
+
+  if(year === 2020) addHoliday(map, year, 8, 10, '山の日');
+  else if(year === 2021) addHoliday(map, year, 8, 8, '山の日');
+  else if(year >= 2016) addHoliday(map, year, 8, 11, '山の日');
+
+  if(year >= 2003) addHoliday(map, year, 9, nthMonday(year,9,3), '敬老の日');
+  else if(year >= 1966) addHoliday(map, year, 9, 15, '敬老の日');
+  if(year >= 1948) addHoliday(map, year, 9, equinoxDay(year,'autumn'), '秋分の日');
+
+  if(year === 2020) addHoliday(map, year, 7, 24, 'スポーツの日');
+  else if(year === 2021) addHoliday(map, year, 7, 23, 'スポーツの日');
+  else if(year >= 2000) addHoliday(map, year, 10, nthMonday(year,10,2), year >= 2020 ? 'スポーツの日' : '体育の日');
+  else if(year >= 1966) addHoliday(map, year, 10, 10, '体育の日');
+
+  if(year >= 1948){
+    addHoliday(map, year, 11, 3, '文化の日');
+    addHoliday(map, year, 11, 23, '勤労感謝の日');
+  }
+  if(year >= 1989 && year <= 2018) addHoliday(map, year, 12, 23, '天皇誕生日');
+  return map;
+}
+const jpHolidayCache = {};
+function getJapaneseHolidays(year){
+  if(jpHolidayCache[year]) return jpHolidayCache[year];
+  const map = baseJapaneseHolidays(year);
+  const daysInYear = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0 ? 366 : 365;
+  const keyAt = i => {
+    const d = new Date(year,0,i);
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  };
+  // 国民の休日：祝日と祝日に挟まれた平日
+  if(year >= 1986){
+    for(let i=2;i<daysInYear;i++){
+      const prev = keyAt(i-1), cur = keyAt(i), next = keyAt(i+1);
+      const dt = new Date(cur);
+      if(!map[cur] && dt.getDay() !== 0 && map[prev] && map[next]) map[cur] = '国民の休日';
+    }
+  }
+  // 振替休日：日曜の祝日の次の平日（連休の場合は次の空き日）
+  if(year >= 1973){
+    for(let i=1;i<=daysInYear;i++){
+      const key = keyAt(i);
+      const dt = new Date(key);
+      if(map[key] && dt.getDay() === 0){
+        let j = i + 1;
+        while(j <= daysInYear && map[keyAt(j)]) j++;
+        if(j <= daysInYear) map[keyAt(j)] = '振替休日';
+      }
+    }
+  }
+  jpHolidayCache[year] = map;
+  return map;
+}
+function jpHolidayName(key){
+  const year = Number(String(key).slice(0,4));
+  return (getJapaneseHolidays(year) || {})[key] || '';
+}
+
+function jaDate(d){
+  const x = new Date(d);
+  if(isNaN(x)) return '';
+  return `${x.getFullYear()}/${pad(x.getMonth()+1)}/${pad(x.getDate())} ${pad(x.getHours())}:${pad(x.getMinutes())}`;
+}
+function shortDate(d){
+  const x = new Date(d);
+  if(isNaN(x)) return '';
+  return `${x.getMonth()+1}月${x.getDate()}日`;
+}
+function titleOf(n){
+  const first = (n.text || '').split('\n').find(l => l.trim());
+  if(first) return first.trim();
+  if((n.images || []).length) return '画像メモ';
+  if((n.drawings || []).length) return '✏️手書きメモ';
+  if((n.tables || []).length) return '▦ 表メモ';
+  return '無題のメモ';
+}
+function previewOf(n){
+  return (n.text || '').split('\n').slice(1).join('　').trim();
+}
+function starterNotes(){
+  const make = (title, date, body='', color='yellow') => ({
+    id: uid(), text: body ? `${title}\n${body}` : title,
+    color, paper:'plain', images: [], drawings: [], folderId:'', createdAt: date, updatedAt: date
+  });
+  return [
+    make('❤️スマホやっては行けないこと','2026-04-26T16:47:00',
+`充電しながら⭕⭕はダメ
+❤️100%以上充電しない
+❤️アニメーションモードオフ
+❤️ゲームは出来るだけpc
+❤️ホコリをさけるpc
+
+PC選び
+ストレージ➡HDD
+GPU➡グラフィック
+CPU➡i7`),
+    make('2026年1月〜3月出来事','2026-03-31T12:00:00','', 'yellow'),
+    make('2026年4月〜出来事','2026-04-19T12:00:00','', 'yellow'),
+    make('21日買い物、電気','2026-04-18T12:00:00','', 'yellow'),
+    make('③','2026-04-13T12:00:00','', 'yellow'),
+    make('4311424','2026-04-13T12:00:00','', 'yellow'),
+    make('たやかのや','2026-04-26T12:00:00','', 'yellow'),
+    make('とんかつ成蔵・三谷成','2026-03-27T12:00:00','', 'yellow'),
+    make('画像編集','2026-04-11T12:00:00','', 'pink')
+  ];
+}
+function addStarterNotes(save=true){
+  notes = starterNotes().concat(notes);
+  persist();
+  renderAll();
+  alert('初期メモを追加しました');
+}
+
+function folderById(id){ return folders.find(f=>f.id===id) || null; }
+function isFolderId(id){ return !!folderById(id); }
+function folderChildren(parentId=''){
+  return folders.filter(f=>(f.parentId||'')===(parentId||'')).slice().sort((a,b)=>a.name.localeCompare(b.name,'ja'));
+}
+function folderPathArray(id){
+  const out = [];
+  let cur = folderById(id);
+  const seen = new Set();
+  while(cur && !seen.has(cur.id)){
+    out.unshift(cur);
+    seen.add(cur.id);
+    cur = folderById(cur.parentId);
+  }
+  return out;
+}
+function folderPath(id){
+  const arr = folderPathArray(id);
+  return arr.length ? arr.map(f=>f.name).join(' / ') : '';
+}
+function getDescendantFolderIds(id){
+  const result = [];
+  const stack = [id];
+  while(stack.length){
+    const parent = stack.pop();
+    folderChildren(parent).forEach(ch=>{ result.push(ch.id); stack.push(ch.id); });
+  }
+  return result;
+}
+function folderCount(id){
+  if(id==='all') return notes.length;
+  if(id==='uncat') return notes.filter(n=>!n.folderId || !isFolderId(n.folderId)).length;
+  if(!isFolderId(id)) return 0;
+  const ids = new Set([id, ...getDescendantFolderIds(id)]);
+  return notes.filter(n=>ids.has(n.folderId)).length;
+}
+function directFolderCount(id){
+  return notes.filter(n=>n.folderId===id).length;
+}
+function renderFolderBar(){
+  const row = document.getElementById('folderRow');
+  if(!row) return;
+  if(selectedFolder !== 'all' && selectedFolder !== 'uncat' && !isFolderId(selectedFolder)) selectedFolder = 'uncat';
+  const parts = [];
+  const chip = (id, label, count, cls='') => `<button class="folder-chip ${selectedFolder===id?'active':''} ${cls}" onclick="selectFolder('${id}')">${label}${typeof count==='number'?' '+count:''}</button>`;
+  parts.push(chip('uncat','📄 未分類',folderCount('uncat')));
+  parts.push(chip('all','📚 すべて',folderCount('all')));
+  let parentForChildren = '';
+  if(isFolderId(selectedFolder)){
+    const cur = folderById(selectedFolder);
+    parentForChildren = selectedFolder;
+    parts.push(`<button class="folder-chip up" onclick="selectFolder('${cur.parentId || 'all'}')">← 上へ</button>`);
+    folderPathArray(selectedFolder).forEach(f=>{
+      parts.push(chip(f.id, '📁 ' + escapeHtml(f.name), folderCount(f.id)));
+    });
+    parts.push(`<button class="folder-chip add-inside" onclick="addFolderPrompt('${selectedFolder}')">＋中に追加</button>`);
+  }
+  folderChildren(parentForChildren).forEach(f=>{
+    parts.push(chip(f.id, '📁 ' + escapeHtml(f.name), folderCount(f.id)));
+  });
+  if(!isFolderId(selectedFolder) && folderChildren('').length===0){
+    parts.push(`<button class="folder-chip add-inside" onclick="addFolderPrompt('')">＋フォルダ追加</button>`);
+  }
+  row.innerHTML = parts.join('');
+}
+function selectFolder(id){
+  selectedFolder = id;
+  renderFolderBar();
+  renderList();
+}
+function addFolderPrompt(parentId, afterScreen){
+  if(parentId === undefined) parentId = isFolderId(selectedFolder) ? selectedFolder : '';
+  if(parentId && !isFolderId(parentId)) parentId = '';
+  const where = parentId ? `「${folderPath(parentId)}」の中` : 'トップ';
+  const name = prompt(`${where}に作るフォルダ名を入力してください`);
+  if(!name || !name.trim()) return;
+  const clean = name.trim();
+  const existing = folders.find(f=>(f.parentId||'')===(parentId||'') && f.name === clean);
+  if(existing){ selectedFolder = existing.id; folderDashboardParent = existing.parentId || ''; renderAll(); showScreen(afterScreen || 'list'); return; }
+  const f = {id:'f_' + uid(), name:clean, parentId:parentId || ''};
+  folders.push(f);
+  persistFolders();
+  selectedFolder = f.id;
+  folderDashboardParent = f.parentId || '';
+  renderAll();
+  showScreen(afterScreen || 'list');
+}
+function addChildFolder(parentId){ addFolderPrompt(parentId); }
+function editFolderName(id){
+  const f = folderById(id);
+  if(!f) return;
+  const name = prompt('新しいフォルダ名を入力してください', f.name);
+  if(name === null) return;
+  const clean = name.trim();
+  if(!clean) return;
+  const duplicate = folders.find(x=>x.id!==id && (x.parentId||'')===(f.parentId||'') && x.name===clean);
+  if(duplicate){ alert('同じ場所に同じ名前のフォルダがあります'); return; }
+  f.name = clean;
+  persistFolders();
+  renderAll();
+}
+let folderDashboardParent = '';
+function folderIcon(name){
+  const n = String(name || '');
+  if(/レシピ|料理|食|ご飯|ごはん|弁当|店|ラーメン|カフェ/.test(n)) return '🍴';
+  if(/買|ショッピング|スーパー|服|日用品/.test(n)) return '🛒';
+  if(/仕事|会社|資料|会議|企画|案件/.test(n)) return '💼';
+  if(/旅行|旅|ホテル|地図|外出/.test(n)) return '✈️';
+  if(/AI|ChatGPT|PC|スマホ|アプリ|電子|動画|画像|編集/.test(n)) return '💻';
+  if(/趣味|ゲーム|音楽|映画|アニメ|遊び/.test(n)) return '🎮';
+  if(/お金|家計|支払|銀行|電気|ガス/.test(n)) return '💰';
+  if(/健康|病院|薬|運動/.test(n)) return '💊';
+  if(/家|生活|掃除|部屋/.test(n)) return '🏠';
+  return '📁';
+}
+function folderColorClass(id, name){
+  const seed = String(id || name || '').split('').reduce((a,c)=>a+c.charCodeAt(0),0);
+  return 'folder-color-' + (seed % 12);
+}
+function folderCard(id, name, count, opts={}){
+  const safeId = escapeHtml(id);
+  const safeName = escapeHtml(name);
+  const icon = opts.icon || folderIcon(name);
+  const color = opts.color || folderColorClass(id, name);
+  const childCount = (!opts.special && isFolderId(id)) ? folderChildren(id).length : 0;
+  const countText = `${count}件のメモ${childCount ? '・中に' + childCount + '個' : ''}`;
+  if(opts.add){
+    return `<button class="folder-card-tile folder-add-tile" onclick="addFolderPrompt('${escapeHtml(folderDashboardParent)}','folders')">
+      <div class="folder-card-main">
+        <div class="folder-card-icon">＋</div>
+        <div class="folder-card-text"><div class="folder-card-name">フォルダ追加</div><div class="folder-card-count">新しいカテゴリを作成</div></div>
+      </div>
+    </button>`;
+  }
+  if(opts.special){
+    return `<div class="folder-swipe no-actions ${color}">
+      <button class="folder-card-tile" onclick="selectFolder('${safeId}');showScreen('list')">
+        <div class="folder-card-main"><div class="folder-card-icon">${icon}</div><div class="folder-card-text"><div class="folder-card-name">${safeName}</div><div class="folder-card-count">${count}件のメモ</div></div></div>
+        <div class="folder-card-arrow">›</div>
+      </button>
+    </div>`;
+  }
+  return `<div class="folder-swipe ${color}" data-id="${safeId}" onpointerdown="folderSwipeStart(event,this)" onpointermove="folderSwipeMove(event,this)" onpointerup="folderSwipeEnd(event,this)" onpointercancel="folderSwipeEnd(event,this)">
+    <div class="folder-card-actions" onclick="event.stopPropagation()">
+      <button onclick="editFolderName('${safeId}');closeFolderSwipes()"><span>✎</span>編集</button>
+      <button onclick="addFolderPrompt('${safeId}','folders');closeFolderSwipes()"><span>＋</span>中に追加</button>
+      <button onclick="deleteFolder('${safeId}');closeFolderSwipes()"><span>🗑</span>削除</button>
+    </div>
+    <button class="folder-card-tile" onclick="folderCardOpen(event,'${safeId}',this)">
+      <div class="folder-card-main"><div class="folder-card-icon">${icon}</div><div class="folder-card-text"><div class="folder-card-name">${safeName}</div><div class="folder-card-count">${countText}</div></div></div>
+      <div class="folder-card-arrow">›</div>
+    </button>
+  </div>`;
+}
+function folderCardOpen(ev,id,btn){
+  const row = btn.closest('.folder-swipe');
+  if(row && row.classList.contains('open')){ row.classList.remove('open'); return; }
+  // フォルダカードを押したら、そのフォルダの中を開いて確認する
+  enterFolderDashboard(id);
+}
+let folderSwipeData = null;
+function closeFolderSwipes(except){
+  document.querySelectorAll('.folder-swipe.open').forEach(el=>{ if(el!==except) el.classList.remove('open'); });
+}
+function folderSwipeStart(ev,el){
+  folderSwipeData = {x:ev.clientX, y:ev.clientY, moved:false};
+}
+function folderSwipeMove(ev,el){
+  if(!folderSwipeData) return;
+  const dx = ev.clientX - folderSwipeData.x;
+  const dy = ev.clientY - folderSwipeData.y;
+  if(Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy)){
+    folderSwipeData.moved = true;
+    if(dx < -26){ closeFolderSwipes(el); el.classList.add('open'); }
+    if(dx > 26){ el.classList.remove('open'); }
+  }
+}
+function folderSwipeEnd(ev,el){
+  folderSwipeData = null;
+}
+function enterFolderDashboard(id){
+  folderDashboardParent = isFolderId(id) ? id : '';
+  renderFolderDashboard();
+}
+function renderFolderDashboard(){
+  const grid = document.getElementById('folderDashboardGrid');
+  const crumb = document.getElementById('folderBreadcrumb');
+  const sub = document.getElementById('folderDashboardSub');
+  if(!grid) return;
+  if(folderDashboardParent && !isFolderId(folderDashboardParent)) folderDashboardParent = '';
+  const path = folderDashboardParent ? folderPathArray(folderDashboardParent) : [];
+  if(sub){
+    if(folderDashboardParent){
+      const memoCount = directFolderCount(folderDashboardParent);
+      const childCount = folderChildren(folderDashboardParent).length;
+      sub.textContent = `${folderPath(folderDashboardParent)} / メモ${memoCount}件・中のフォルダ${childCount}個`;
+    }else{
+      sub.textContent = 'フォルダを開くと中身を確認できます';
+    }
+  }
+  if(crumb){
+    let c = `<button class="${!folderDashboardParent?'active':''}" onclick="enterFolderDashboard('')">トップ</button>`;
+    path.forEach(f=>{ c += `<button class="${f.id===folderDashboardParent?'active':''}" onclick="enterFolderDashboard('${escapeHtml(f.id)}')">${escapeHtml(f.name)}</button>`; });
+    crumb.innerHTML = c;
+  }
+  const parts = [];
+  if(!folderDashboardParent){
+    // トップ画面の「未分類」「すべて」カードは表示しない
+  }else{
+    // フォルダ内の「上へ戻る」と「メモ一覧」カードは表示しない
+  }
+  const children = folderChildren(folderDashboardParent);
+  if(children.length){
+    parts.push('<div class="folder-section-title">📁 中のフォルダ</div>');
+    children.forEach(f=>parts.push(folderCard(f.id, f.name, directFolderCount(f.id))));
+  }
+  if(folderDashboardParent){
+    const directNotes = notes.filter(n=>n.folderId===folderDashboardParent).slice().sort((a,b)=>new Date(b.updatedAt)-new Date(a.updatedAt));
+    if(directNotes.length){
+      directNotes.forEach((n,i)=>parts.push(cardHtml(n,i,directNotes.length)));
+    }else{
+      parts.push('<div class="folder-note-empty">このフォルダ直下のメモはありません<br>子フォルダを開くと中のメモを確認できます</div>');
+    }
+  }else{
+    const topChildren = folderChildren('');
+    if(topChildren.length){
+      // トップ画面には作成済みフォルダのみ表示
+    }
+  }
+  if(!children.length && folderDashboardParent && !notes.some(n=>n.folderId===folderDashboardParent)){
+    // direct note empty is already shown above
+  }
+  // フォルダ追加カードは表示しない（追加は右上の＋ボタンから行う）
+  if(!children.length && !folderDashboardParent){
+    parts.push('<div class="folder-empty-grid">フォルダはまだありません<br>右上の＋から追加できます</div>');
+  }
+  grid.innerHTML = parts.join('');
+}
+function renderFolderManageList(){
+  const boxes = ['folderManageList','folderTabManageList'].map(id=>document.getElementById(id)).filter(Boolean);
+  if(!boxes.length) return;
+  function branch(parentId='', depth=0){
+    return folderChildren(parentId).map(f=>{
+      const childCount = folderChildren(f.id).length;
+      return `<div class="folder-line" style="margin-left:${Math.min(depth*14,56)}px">
+        <span class="folder-name" onclick="selectFolder('${f.id}');showScreen('list')">📁 ${escapeHtml(f.name)}<small>${escapeHtml(folderPath(f.id))} / メモ${directFolderCount(f.id)}件・中のフォルダ${childCount}個</small></span>
+        <div class="folder-actions">
+          <button class="sub" onclick="addChildFolder('${f.id}')">中に追加</button>
+          <button class="edit" onclick="editFolderName('${f.id}')">名前変更</button>
+          <button class="danger" onclick="deleteFolder('${f.id}')">削除</button>
+        </div>
+      </div>` + branch(f.id, depth+1);
+    }).join('');
+  }
+  const html = folders.length ? branch('') : '<div class="folder-empty">追加したフォルダはありません<br>「フォルダを追加」から作れます</div>';
+  boxes.forEach(box=>{ box.innerHTML = html; });
+}
+function deleteFolder(id){
+  const f = folderById(id);
+  if(!f) return;
+  const ids = new Set([id, ...getDescendantFolderIds(id)]);
+  const noteCount = notes.filter(n=>ids.has(n.folderId)).length;
+  const childCount = ids.size - 1;
+  if(!confirm(`フォルダ「${folderPath(id)}」を削除しますか？\n子フォルダ ${childCount}個も削除されます。\n中のメモ ${noteCount}件は未分類に戻ります。`)) return;
+  const parentAfter = f.parentId || 'all';
+  folders = folders.filter(x=>!ids.has(x.id));
+  notes.forEach(n=>{ if(ids.has(n.folderId)) n.folderId=''; });
+  if(ids.has(selectedFolder)) selectedFolder = parentAfter;
+  persistFolders(); persist(); renderAll(); renderFolderManageList();
+}
+function findOrCreateFolderPath(path){
+  const parts = String(path).split(/[\/＞>→]+/).map(s=>s.trim()).filter(Boolean);
+  let parentId = '';
+  parts.forEach(name=>{
+    let f = folders.find(x=>(x.parentId||'')===(parentId||'') && x.name===name);
+    if(!f){
+      f = {id:'f_' + uid(), name, parentId};
+      folders.push(f);
+    }
+    parentId = f.id;
+  });
+  persistFolders();
+  return parentId;
+}
+function moveCurrentToFolder(){
+  openFolderMove();
+}
+function openFolderMove(){
+  const n = notes.find(x=>x.id===currentId);
+  if(!n) return;
+  renderFolderMoveList(n);
+  const sheet = document.getElementById('folderMove');
+  if(sheet) sheet.classList.add('open');
+}
+function hideFolderMove(){
+  const sheet = document.getElementById('folderMove');
+  if(sheet) sheet.classList.remove('open');
+}
+function renderFolderMoveList(n){
+  const box = document.getElementById('folderMoveList');
+  if(!box) return;
+  let html = `<button class="folder-move-btn uncat ${!n.folderId?'active':''}" onclick="moveCurrentToFolderId('')">
+    📄 未分類 ${!n.folderId?'✓':''}
+    <span class="folder-move-path">フォルダなしに移動</span>
+  </button>`;
+  function branch(parentId='', depth=0){
+    return folderChildren(parentId).map(f=>{
+      const active = n.folderId === f.id;
+      const pad = Math.min(12 + depth * 18, 84);
+      const children = branch(f.id, depth + 1);
+      return `<button class="folder-move-btn ${active?'active':''}" style="padding-left:${pad}px" onclick="moveCurrentToFolderId('${f.id}')">
+        📁 ${escapeHtml(f.name)} ${active?'✓':''}
+        <span class="folder-move-path">${escapeHtml(folderPath(f.id))}</span>
+      </button>` + children;
+    }).join('');
+  }
+  const tree = branch('');
+  html += tree || '<div class="folder-move-empty">まだフォルダがありません<br>下のボタンからフォルダを作れます</div>';
+  html += `<button class="folder-move-btn add" onclick="hideFolderMove();addFolderPrompt()">＋ フォルダを追加</button>`;
+  box.innerHTML = html;
+}
+function moveCurrentToFolderId(folderId){
+  const n = notes.find(x=>x.id===currentId);
+  if(!n) return;
+  n.folderId = (folderId && isFolderId(folderId)) ? folderId : '';
+  n.updatedAt = new Date().toISOString();
+  persist();
+  const ef = document.getElementById('editorFolder');
+  const ed = document.getElementById('editorDate');
+  const ss = document.getElementById('saveState');
+  if(ef) ef.textContent = '📁 ' + folderName(n.folderId);
+  if(ed) ed.textContent = jaDate(n.updatedAt);
+  if(ss) ss.textContent = '移動しました';
+  hideFolderMove();
+  renderFolderBar(); renderFolderManageList(); renderList(); renderFolderDashboard();
+  setTimeout(()=>{
+    const state = document.getElementById('saveState');
+    if(state && currentId === n.id) state.textContent = '保存済み';
+  }, 900);
+}
+
+function showScreen(name){
+  if(name==='menu' || name==='settings') name='folders';
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  const sc = document.getElementById('screen-'+name);
+  if(sc) sc.classList.add('active');
+  document.querySelectorAll('.bottom .nav').forEach(n=>n.classList.remove('active'));
+  const tab = document.getElementById('tab-'+name);
+  if(tab) tab.classList.add('active');
+  const fabs = document.getElementById('fabArea');
+  if(fabs) fabs.style.display = name==='list' ? 'flex' : 'none';
+  if(name==='calendar') renderCalendar();
+  if(name==='list') { renderFolderBar(); renderList(); }
+  if(name==='folders') renderFolderDashboard();
+  if(name==='settings') renderFolderManageList();
+}
+let memoSearchQuery = '';
+function normalizeSearchText(v){
+  return String(v || '').toLowerCase().replace(/\s+/g,' ').trim();
+}
+function toggleSearch(){
+  showScreen('list');
+  setTimeout(()=>document.getElementById('memoSearchInput')?.focus(), 50);
+}
+function onMemoSearchInput(value){
+  memoSearchQuery = value || '';
+  const clearBtn = document.getElementById('memoSearchClear');
+  if(clearBtn) clearBtn.style.visibility = memoSearchQuery ? 'visible' : 'hidden';
+  renderList();
+}
+function clearSearch(){
+  memoSearchQuery = '';
+  const input = document.getElementById('memoSearchInput');
+  if(input) input.value = '';
+  const clearBtn = document.getElementById('memoSearchClear');
+  if(clearBtn) clearBtn.style.visibility = 'hidden';
+  renderList();
+}
+function noteSearchBody(n){
+  return [
+    titleOf(n),
+    n.text || '',
+    n.html ? htmlToPlainTextSafe(n.html) : '',
+    folderName(n.folderId),
+    jaDate(n.updatedAt),
+    jaDate(n.createdAt)
+  ].join(' ');
+}
+function getSortMode(){
+  return document.getElementById('sortSelect')?.value || 'manual';
+}
+function initSortSelect(){
+  const sel = document.getElementById('sortSelect');
+  if(!sel) return;
+  let saved = 'manual';
+  try{ saved = lsGet(SORT_KEY) || 'manual'; }catch(e){}
+  if(Array.from(sel.options).some(o=>o.value===saved)) sel.value = saved;
+}
+function onSortChange(){
+  try{ lsSet(SORT_KEY, getSortMode()); }catch(e){}
+  renderList();
+}
+function sortedNotes(){
+  const mode = getSortMode();
+  let arr = notes.slice();
+  if(selectedFolder === 'uncat') arr = arr.filter(n=>!n.folderId || !isFolderId(n.folderId));
+  else if(selectedFolder !== 'all'){
+    if(isFolderId(selectedFolder)){
+      // フォルダを開いた時は、そのフォルダ直下のメモだけ表示
+      // 子フォルダ内のメモは、フォルダ画面で子フォルダを開いて確認する
+      arr = arr.filter(n=>n.folderId === selectedFolder);
+    }else{
+      selectedFolder = 'uncat';
+    }
+  }
+  const q = normalizeSearchText(memoSearchQuery);
+  if(q){
+    arr = arr.filter(n=>normalizeSearchText(noteSearchBody(n)).includes(q));
+  }
+  if(mode==='manual') return arr;
+  arr = arr.slice().sort((a,b)=>{
+    if(mode==='title') return titleOf(a).localeCompare(titleOf(b),'ja');
+    if(mode==='created') return new Date(b.createdAt) - new Date(a.createdAt);
+    return new Date(b.updatedAt) - new Date(a.updatedAt);
+  });
+  return arr;
+}
+function folderName(id){
+  if(!id) return '未分類';
+  return folderPath(id) || '未分類';
+}
+function cardHtml(n, idx=0, total=0){
+  const manual = getSortMode() === 'manual';
+  const safeId = escapeHtml(n.id);
+  return `<div class="note-swipe" data-id="${safeId}" onpointerdown="noteSwipeStart(event,this)" onpointermove="noteSwipeMove(event,this)" onpointerup="noteSwipeEnd(event,this)" onpointercancel="noteSwipeCancel(event,this)">
+    <div class="note-actions" onclick="event.stopPropagation()">
+      <button class="move" onclick="moveNoteFromCard('${safeId}')"><span>📁</span>移動</button>
+      <button class="delete" onclick="deleteNoteFromCard('${safeId}')"><span>🗑</span>削除</button>
+    </div>
+    <div class="note-card ${n.color || 'yellow'} ${manual?'manual-mode':''}" onclick="noteCardOpen(event,'${safeId}',this)">
+      <div class="note-main">
+        <div class="note-title">${escapeHtml(titleOf(n))}</div>
+      </div>
+      ${manual ? '<div class="note-drag-handle" aria-hidden="true">↕</div>' : ''}
+    </div>
+  </div>`;
+}
+function noteCardOpen(ev,id,card){
+  if(ev && ev.target && ev.target.closest && ev.target.closest('.note-drag-handle')){ ev.preventDefault(); ev.stopPropagation(); return; }
+  if(Date.now() - noteReorderEndedAt < 650){ ev.preventDefault(); ev.stopPropagation(); return; }
+  const row = card.closest('.note-swipe');
+  if(row && row.classList.contains('reordering')){ ev.preventDefault(); ev.stopPropagation(); return; }
+  if(row && row.classList.contains('open')){ row.classList.remove('open'); return; }
+  openNote(id);
+}
+let noteSwipeData = null;
+let noteReorderData = null;
+let noteReorderEndedAt = 0;
+function closeNoteSwipes(except){
+  document.querySelectorAll('.note-swipe.open').forEach(el=>{ if(el!==except) el.classList.remove('open'); });
+}
+function clearNoteLongPress(){
+  if(noteSwipeData && noteSwipeData.longTimer){
+    clearTimeout(noteSwipeData.longTimer);
+    noteSwipeData.longTimer = null;
+  }
+}
+function noteSwipeStart(ev,el){
+  if(ev.pointerType === 'mouse' && ev.button !== 0) return;
+  if(noteReorderData) return;
+  const isHandle = !!(ev.target && ev.target.closest && ev.target.closest('.note-drag-handle'));
+  noteSwipeData = {
+    x:ev.clientX,
+    y:ev.clientY,
+    pointerId:ev.pointerId,
+    pointerType:ev.pointerType || 'touch',
+    moved:false,
+    longTimer:null,
+    isHandle:isHandle
+  };
+  // 並び替えは↕ハンドルだけで開始。長押し待ちをやめて、画面スクロールとの競合を防ぐ。
+  if(getSortMode() === 'manual' && isHandle && !el.classList.contains('open')){
+    ev.preventDefault();
+    ev.stopPropagation();
+    try{ el.setPointerCapture(ev.pointerId); }catch(e){}
+    beginNoteReorder(ev,el);
+    return;
+  }
+  // ハンドル以外では通常スクロール・左右スワイプ・メモを開く操作を優先する。
+}
+
+function beginNoteReorder(ev,el){
+  if(!noteSwipeData || noteSwipeData.moved || noteReorderData) return;
+  const list = document.getElementById('noteList');
+  if(!list || !el || el.parentElement !== list) return;
+  clearNoteLongPress();
+  closeNoteSwipes(el);
+  const rect = el.getBoundingClientRect();
+  noteReorderData = {
+    row:el,
+    id:el.dataset.id,
+    pointerId:noteSwipeData.pointerId || ev.pointerId,
+    startY:noteSwipeData.y,
+    lastY:noteSwipeData.y,
+    rowStartTop:rect.top,
+    rowHeight:rect.height,
+    raf:0,
+    scrollRaf:0
+  };
+  el.style.setProperty('--note-drag-y','0px');
+  el.classList.add('reordering');
+  document.body.classList.add('note-reorder-mode');
+  try{ el.setPointerCapture(noteReorderData.pointerId); }catch(e){}
+  try{ if(navigator.vibrate) navigator.vibrate(12); }catch(e){}
+}
+function noteSwipeMove(ev,el){
+  if(noteReorderData && noteReorderData.row === el){
+    ev.preventDefault();
+    ev.stopPropagation();
+    noteReorderMove(ev.clientY);
+    return;
+  }
+  if(!noteSwipeData) return;
+  const dx = ev.clientX - noteSwipeData.x;
+  const dy = ev.clientY - noteSwipeData.y;
+  if(Math.abs(dx) > 8 || Math.abs(dy) > 8) clearNoteLongPress();
+  if(Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) noteSwipeData.moved = true;
+  if(Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy)){
+    noteSwipeData.moved = true;
+    if(dx < -26){ closeNoteSwipes(el); el.classList.add('open'); }
+    if(dx > 26){ el.classList.remove('open'); }
+  }
+}
+function noteReorderMove(clientY){
+  if(!noteReorderData) return;
+  noteReorderData.lastY = clientY;
+  if(noteReorderData.raf) return;
+  noteReorderData.raf = requestAnimationFrame(()=>{
+    if(!noteReorderData) return;
+    noteReorderData.raf = 0;
+    updateNoteDragVisual();
+    reorderNoteByPointer();
+    autoScrollNoteList();
+  });
+}
+function updateNoteDragVisual(){
+  if(!noteReorderData) return;
+  const dy = noteReorderData.lastY - noteReorderData.startY;
+  noteReorderData.row.style.setProperty('--note-drag-y', dy + 'px');
+}
+function reorderNoteByPointer(){
+  if(!noteReorderData) return;
+  const list = document.getElementById('noteList');
+  const row = noteReorderData.row;
+  if(!list || !row) return;
+  const y = noteReorderData.lastY;
+  const siblings = Array.from(list.querySelectorAll('.note-swipe')).filter(item=>item !== row);
+  let beforeNode = null;
+  for(const item of siblings){
+    const rect = item.getBoundingClientRect();
+    if(y < rect.top + rect.height / 2){ beforeNode = item; break; }
+  }
+  const oldTop = row.getBoundingClientRect().top;
+  if(beforeNode){
+    if(row.nextSibling !== beforeNode) list.insertBefore(row,beforeNode);
+  }else if(row !== list.lastElementChild){
+    list.appendChild(row);
+  }
+  const newTop = row.getBoundingClientRect().top;
+  if(newTop !== oldTop){
+    noteReorderData.startY += (newTop - oldTop);
+    updateNoteDragVisual();
+  }
+}
+function autoScrollNoteList(){
+  if(!noteReorderData) return;
+  const list = document.getElementById('noteList');
+  const scroller = list ? list.closest('.scroll') : null;
+  if(!scroller) return;
+  const rect = scroller.getBoundingClientRect();
+  const y = noteReorderData.lastY;
+  const margin = 78;
+  let speed = 0;
+  if(y < rect.top + margin) speed = -Math.round((rect.top + margin - y) / 5) - 4;
+  else if(y > rect.bottom - margin) speed = Math.round((y - (rect.bottom - margin)) / 5) + 4;
+  if(speed === 0) return;
+  const row = noteReorderData.row;
+  const oldTop = row.getBoundingClientRect().top;
+  scroller.scrollTop += speed;
+  const newTop = row.getBoundingClientRect().top;
+  noteReorderData.startY += (newTop - oldTop);
+  updateNoteDragVisual();
+  if(noteReorderData.scrollRaf) return;
+  noteReorderData.scrollRaf = requestAnimationFrame(()=>{
+    if(!noteReorderData) return;
+    noteReorderData.scrollRaf = 0;
+    noteReorderMove(noteReorderData.lastY);
+  });
+}
+function noteSwipeEnd(ev,el){
+  clearNoteLongPress();
+  if(noteReorderData && noteReorderData.row === el){
+    finishNoteReorder();
+  }
+  noteSwipeData = null;
+}
+function noteSwipeCancel(ev,el){
+  clearNoteLongPress();
+  if(noteReorderData && noteReorderData.row === el){
+    finishNoteReorder();
+  }
+  noteSwipeData = null;
+}
+function finishNoteReorder(){
+  if(!noteReorderData) return;
+  const data = noteReorderData;
+  const row = data.row;
+  if(data.raf) cancelAnimationFrame(data.raf);
+  if(data.scrollRaf) cancelAnimationFrame(data.scrollRaf);
+  row.style.setProperty('--note-drag-y','0px');
+  row.classList.remove('reordering');
+  document.body.classList.remove('note-reorder-mode');
+  commitNoteOrderFromDom();
+  try{ row.releasePointerCapture(data.pointerId); }catch(e){}
+  noteReorderData = null;
+  noteReorderEndedAt = Date.now();
+}
+function commitNoteOrderFromDom(){
+  if(getSortMode() !== 'manual') return;
+  const list = document.getElementById('noteList');
+  if(!list) return;
+  const ids = Array.from(list.querySelectorAll('.note-swipe')).map(el=>el.dataset.id).filter(Boolean);
+  if(ids.length < 2) return;
+  const idSet = new Set(ids);
+  const byId = new Map(notes.map(n=>[n.id,n]));
+  const visibleOrdered = ids.map(id=>byId.get(id)).filter(Boolean);
+  const visibleByFolder = new Set(ids);
+  let p = 0;
+  notes = notes.map(n=> visibleByFolder.has(n.id) ? (visibleOrdered[p++] || n) : n);
+  persist();
+}
+function moveNoteFromCard(id){
+  const n = notes.find(x=>x.id===id);
+  if(!n) return;
+  currentId = id;
+  closeNoteSwipes();
+  openFolderMove();
+}
+function deleteNoteFromCard(id){
+  const n = notes.find(x=>x.id===id);
+  if(!n) return;
+  closeNoteSwipes();
+  if(confirm(`メモ「${titleOf(n)}」を削除しますか？`)){
+    notes = notes.filter(x=>x.id!==id);
+    if(currentId===id) currentId = null;
+    persist();
+    renderAll();
+  }
+}
+
+function moveNoteInView(id, dir){
+  if(getSortMode() !== 'manual') return;
+  const visible = sortedNotes();
+  const from = visible.findIndex(n=>n.id===id);
+  const to = from + dir;
+  if(from < 0 || to < 0 || to >= visible.length) return;
+  const itemIndex = notes.findIndex(n=>n.id===visible[from].id);
+  const targetId = visible[to].id;
+  if(itemIndex < 0) return;
+  const [item] = notes.splice(itemIndex, 1);
+  const targetIndex = notes.findIndex(n=>n.id===targetId);
+  if(targetIndex < 0){ notes.splice(itemIndex, 0, item); return; }
+  notes.splice(dir < 0 ? targetIndex : targetIndex + 1, 0, item);
+  persist();
+  renderList();
+}
+function renderList(){
+  renderFolderBar();
+  const list = document.getElementById('noteList');
+  const arr = sortedNotes();
+  list.innerHTML = arr.length ? arr.map((n,i)=>cardHtml(n,i,arr.length)).join('') : (memoSearchQuery ? '<div class="empty">検索結果がありません<br>別の言葉で検索してください</div>' : '<div class="empty">メモがありません<br>右下の＋で新しいメモを作れます</div>');
+}
+function newNote(){
+  const now = new Date().toISOString();
+  const n = {id:uid(), text:'', color:'white', paper:'plain', fontSize:20, fontColor:'#111111', fontBold:false, fontItalic:false, images:[], drawings:[], tables:[], folderId:(selectedFolder==='all'||selectedFolder==='uncat')?'':selectedFolder, createdAt:now, updatedAt:now};
+  notes.unshift(n); persist(); openNote(n.id);
+}
+function openNote(id){
+  currentId = id;
+  const n = notes.find(x=>x.id===id);
+  if(!n) return;
+  const ed = document.getElementById('editor');
+  ed.className = `editor open ${n.color || 'yellow'}`;
+  document.getElementById('editorText').value = n.text || htmlToPlainTextSafe(n.html || '');
+  lastSavedText = document.getElementById('editorText').value;
+  applyEditorTextStyle(n);
+  currentDirty = false;
+  document.getElementById('editorTitle').textContent = titleOf(n);
+  document.getElementById('editorDate').textContent = jaDate(n.updatedAt);
+  document.getElementById('editorFolder').textContent = '📁 ' + folderName(n.folderId);
+  document.getElementById('saveState').textContent = '保存済み';
+  updatePalette(n.color || 'white');
+  updatePaperPattern(n.paper || 'plain');
+  renderImagePreview(n);
+  renderDrawingPreview(n);
+  renderTablePreview(n);
+  renderUrlPreview(n);
+  closeFormatMenus();
+  document.getElementById('editorText').focus();
+}
+function closeEditor(){
+  saveCurrent();
+  const n = notes.find(x=>x.id===currentId);
+  if(n && !(n.text || '').trim() && !(n.images || []).length && !(n.drawings || []).length && !(n.tables || []).length){
+    notes = notes.filter(x=>x.id!==currentId);
+    persist();
+  }
+  currentId = null;
+  closeFormatMenus();
+  document.getElementById('editor').classList.remove('open');
+  renderAll();
+}
+let saveTimer = null;
+function onEditInput(){
+  const n = notes.find(x=>x.id===currentId);
+  if(!n) return;
+  n.text = document.getElementById('editorText').value;
+  n.updatedAt = new Date().toISOString();
+  document.getElementById('editorTitle').textContent = titleOf(n);
+  document.getElementById('editorDate').textContent = jaDate(n.updatedAt);
+  currentDirty = true;
+  document.getElementById('saveState').textContent = '保存中...';
+  renderUrlPreview(n);
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveCurrent, 350);
+}
+function saveCurrent(){
+  const n = notes.find(x=>x.id===currentId);
+  if(!n) return;
+  const text = document.getElementById('editorText').value;
+  if(text !== lastSavedText || currentDirty){
+    n.text = text;
+    n.updatedAt = new Date().toISOString();
+    persist();
+    lastSavedText = text;
+    currentDirty = false;
+    document.getElementById('editorDate').textContent = jaDate(n.updatedAt);
+  }
+  document.getElementById('saveState').textContent = '保存済み';
+}
+function deleteCurrent(){
+  const n = notes.find(x=>x.id===currentId);
+  if(!n) return;
+  if(confirm('このメモを削除しますか？')){
+    notes = notes.filter(x=>x.id!==currentId);
+    persist();
+    currentId = null;
+    document.getElementById('editor').classList.remove('open');
+    renderAll();
+  }
+}
+function setColor(c){
+  const n = notes.find(x=>x.id===currentId);
+  if(!n) return;
+  n.color = c;
+  n.updatedAt = new Date().toISOString();
+  currentDirty = false;
+  persist();
+  document.getElementById('editor').className = `editor open ${c}`;
+  updatePalette(c);
+}
+function updatePalette(c){
+  document.querySelectorAll('.swatch').forEach(b=>b.classList.toggle('sel', b.dataset.color===c));
+}
+function validPaperPattern(p){
+  p = String(p || 'plain');
+  return ['plain','lines','grid','dots'].includes(p) ? p : 'plain';
+}
+function setPaperPattern(p){
+  const paper = validPaperPattern(p);
+  const n = notes.find(x=>x.id===currentId);
+  if(!n){ updatePaperPattern(paper); return; }
+  const ta = document.getElementById('editorText');
+  if(ta) n.text = ta.value;
+  n.paper = paper;
+  n.updatedAt = new Date().toISOString();
+  persist();
+  updatePaperPattern(paper);
+  document.getElementById('editorDate').textContent = jaDate(n.updatedAt);
+  document.getElementById('saveState').textContent = '保存済み';
+}
+function updatePaperPattern(p){
+  const paper = validPaperPattern(p);
+  const tw = document.querySelector('#editor .textwrap');
+  if(tw){
+    tw.classList.remove('pattern-plain','pattern-lines','pattern-grid','pattern-dots');
+    tw.classList.add('pattern-' + paper);
+  }
+  const sel = document.getElementById('paperPatternSelect');
+  if(sel) sel.value = paper;
+}
+
+function addImageToCurrent(e){
+  const n = notes.find(x=>x.id===currentId);
+  const files = Array.from(e.target.files || []);
+  if(!n || !files.length) return;
+  files.forEach(file=>{
+    if(!file.type || !file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = () => resizeImage(reader.result, dataUrl=>{
+      n.images = n.images || [];
+      n.images.push(dataUrl);
+      n.updatedAt = new Date().toISOString();
+      persist();
+      renderImagePreview(n);
+      document.getElementById('editorDate').textContent = jaDate(n.updatedAt);
+      document.getElementById('saveState').textContent = '保存済み';
+    });
+    reader.readAsDataURL(file);
+  });
+  e.target.value = '';
+}
+function resizeImage(dataUrl, done){
+  const img = new Image();
+  img.onload = () => {
+    const maxSide = 900;
+    let w = img.width, h = img.height;
+    if(Math.max(w,h) > maxSide){
+      if(w >= h){ h = Math.round(h * maxSide / w); w = maxSide; }
+      else { w = Math.round(w * maxSide / h); h = maxSide; }
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, w, h);
+    try{ done(canvas.toDataURL('image/jpeg', 0.72)); }
+    catch(err){ done(dataUrl); }
+  };
+  img.onerror = () => done(dataUrl);
+  img.src = dataUrl;
+}
+function stopImageDeleteEvent(ev){
+  if(ev){
+    if(ev.cancelable) ev.preventDefault();
+    if(ev.stopPropagation) ev.stopPropagation();
+  }
+}
+function renderImagePreview(n){
+  const box = document.getElementById('imagePreview');
+  if(!box) return;
+  const imgs = Array.isArray(n && n.images) ? n.images : [];
+  box.innerHTML = imgs.map((src,i)=>`<div class="image-item">
+    <img src="${escapeHtml(src)}" alt="添付画像 ${i+1}" draggable="false" onclick="openNoteImage(${i})">
+    <button type="button" class="image-delete" data-index="${i}" aria-label="画像削除" title="画像削除">×</button>
+  </div>`).join('');
+}
+function removeImage(i, ev){
+  stopImageDeleteEvent(ev);
+  const n = notes.find(x=>x.id===currentId);
+  const idx = Number(i);
+  if(!n || !Array.isArray(n.images) || !Number.isInteger(idx) || idx < 0 || idx >= n.images.length) return false;
+  n.images.splice(idx,1);
+  n.updatedAt = new Date().toISOString();
+  persist();
+  renderImagePreview(n);
+  renderList();
+  const dateEl = document.getElementById('editorDate');
+  const titleEl = document.getElementById('editorTitle');
+  const saveEl = document.getElementById('saveState');
+  if(dateEl) dateEl.textContent = jaDate(n.updatedAt);
+  if(titleEl) titleEl.textContent = titleOf(n);
+  if(saveEl) saveEl.textContent = '保存済み';
+  return false;
+}
+
+function openNoteThumb(id, i){
+  const n = notes.find(x=>x.id===id);
+  if(!n) return;
+  const src = (n.images && n.images[i]) || ((n.drawings && n.drawings[0]) ? n.drawings[0].png : '');
+  if(src) openLightbox(src);
+}
+function openNoteImage(i){
+  const n = notes.find(x=>x.id===currentId);
+  if(n && n.images && n.images[i]) openLightbox(n.images[i]);
+}
+function openLightbox(src){
+  const lb = document.getElementById('lightbox');
+  const img = document.getElementById('lightboxImg');
+  img.src = src;
+  lb.classList.add('open');
+}
+function closeLightbox(e){
+  if(e) e.stopPropagation();
+  const lb = document.getElementById('lightbox');
+  lb.classList.remove('open');
+  document.getElementById('lightboxImg').src = '';
+}
+function extractUrls(text){
+  const re = /(?:https?:\/\/|www\.)[^\s\u3000<>"']+/gi;
+  const found = String(text || '').match(re) || [];
+  return Array.from(new Set(found.map(u=>u.replace(/[。．、，,.)\]）]+$/,'')))).filter(Boolean).slice(0,12);
+}
+function normalizeUrl(u){ return /^https?:\/\//i.test(u) ? u : 'https://' + u; }
+function shortUrlLabel(u){
+  return u.replace(/^https?:\/\//i,'').replace(/^www\./i,'').slice(0,42);
+}
+function renderUrlPreview(n){
+  const box = document.getElementById('urlPreview');
+  if(!box) return;
+  const urls = extractUrls(n && n.text);
+  box.innerHTML = urls.map(u=>{ const href=normalizeUrl(u); return `<a class="url-chip" href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">🔗 ${escapeHtml(shortUrlLabel(u))}</a>`; }).join('');
+}
+function renderCalendarUrlPreview(e){
+  const box = document.getElementById('calUrlPreview');
+  if(!box) return;
+  const urls = extractUrls(e && e.text);
+  box.innerHTML = urls.map(u=>{ const href=normalizeUrl(u); return `<a class="url-chip" href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">🔗 ${escapeHtml(shortUrlLabel(u))}</a>`; }).join('');
+}
+
+function calEntry(key, create=false){
+  let e = calendarEntries[key];
+  if(!e && create){
+    e = calendarEntries[key] = {text:'', images:[], updatedAt:new Date().toISOString()};
+  }
+  if(e){
+    e.images = Array.isArray(e.images) ? e.images : [];
+    e.text = e.text || '';
+    if(create && e.deletedAt) delete e.deletedAt;
+  }
+  return e;
+}
+function hasCalEntry(e){ return !!(e && !e.deletedAt && ((e.text || '').trim() || (e.images || []).length)); }
+function markCalendarEntryDeleted(key){
+  const now = new Date().toISOString();
+  calendarEntries[key] = {text:'', images:[], updatedAt:now, deletedAt:now};
+}
+function cleanCalendarEntry(key){
+  const e = calendarEntries[key];
+  if(e && !hasCalEntry(e)){
+    if(e.deletedAt) return;
+    markCalendarEntryDeleted(key);
+  }
+}
+function moveMonth(delta){
+  calendarDate = new Date(calendarDate.getFullYear(), calendarDate.getMonth()+delta, 1);
+  selectedCalDate = `${calendarDate.getFullYear()}-${pad(calendarDate.getMonth()+1)}-01`;
+  renderCalendar();
+}
+function renderCalendar(){
+  const y = calendarDate.getFullYear(), m = calendarDate.getMonth();
+  document.getElementById('calTitle').textContent = `${y}年${m+1}月`;
+  const grid = document.getElementById('calGrid');
+  const dows = [
+    {t:'日', c:'sun'}, {t:'月', c:''}, {t:'火', c:''}, {t:'水', c:''},
+    {t:'木', c:''}, {t:'金', c:''}, {t:'土', c:'sat'}
+  ];
+  let html = dows.map(d=>`<div class="dow ${d.c}">${d.t}</div>`).join('');
+  const first = new Date(y,m,1).getDay();
+  const total = new Date(y,m+1,0).getDate();
+  const prevTotal = new Date(y,m,0).getDate();
+  const today = dateKey(new Date());
+  for(let i=0;i<first;i++) html += `<div class="day om">${prevTotal-first+i+1}</div>`;
+  for(let d=1;d<=total;d++){
+    const key = `${y}-${pad(m+1)}-${pad(d)}`;
+    const dow = new Date(y,m,d).getDay();
+    const holiday = jpHolidayName(key);
+    const entry = calEntry(key, false);
+    const imgs = entry && Array.isArray(entry.images) ? entry.images : [];
+    const firstImg = imgs[0] || '';
+    const hasImage = !!firstImg;
+    const hasText = !!(entry && (entry.text || '').trim());
+    const hasEntry = hasCalEntry(entry);
+    const memoLine = hasText ? (entry.text || '').trim().split(/\n/).map(v=>v.trim()).filter(Boolean).slice(0, 3).map(v=>v.slice(0, 10)).join('\n') : '';
+    const titleText = [holiday, hasImage ? `画像${imgs.length}枚` : '', memoLine.replace(/\n/g, ' / ')].filter(Boolean).join(' / ');
+    const dayClass = `${hasEntry?'has':''} ${hasImage?'has-image':''} ${hasText?'has-text':''} ${today===key?'today':''} ${selectedCalDate===key?'selected':''} ${dow===0?'sun':''} ${dow===6?'sat':''} ${holiday?'holiday':''}`;
+    html += `<div class="day ${dayClass}" ${titleText?`title="${escapeHtml(titleText)}"`:''} onclick="selectCalendarDay('${key}', ${hasImage?'true':'false'})">${hasImage?`<img class="cal-cell-thumb" src="${escapeHtml(firstImg)}" alt="カレンダー画像">`:''}<span class="day-num">${d}</span>${holiday?`<span class="holiday-name">${escapeHtml(holiday)}</span>`:''}${memoLine?`<span class="cal-memo">${escapeHtml(memoLine)}</span>`:''}${hasImage && imgs.length>1?`<span class="cal-img-count">+${imgs.length}</span>`:''}</div>`;
+  }
+  const rem = (7 - ((first+total)%7))%7;
+  for(let i=1;i<=rem;i++) html += `<div class="day om">${i}</div>`;
+  grid.innerHTML = html;
+  renderCalendarPanel();
+}
+
+function selectCalendarDay(key, openImage=false){
+  selectedCalDate = key;
+  renderCalendar();
+  const entry = calEntry(key, false);
+  if(openImage && entry && entry.images && entry.images[0]){
+    // サムネイルの日付をタップした時は、選択も行いながら画像を大きく表示
+    setTimeout(()=>openLightbox(entry.images[0]), 30);
+  }else{
+    setTimeout(()=>{
+      const panel = document.getElementById('calDayPanel');
+      if(panel) panel.scrollIntoView({behavior:'smooth', block:'nearest'});
+    }, 30);
+  }
+}
+function renderCalendarPanel(){
+  const [y,m,d] = selectedCalDate.split('-').map(Number);
+  const holiday = jpHolidayName(selectedCalDate);
+  document.getElementById('calPanelDate').textContent = `${y}年${m}月${d}日${holiday ? '（' + holiday + '）' : ''}`;
+  const e = calEntry(selectedCalDate, false) || {text:'', images:[]};
+  const ta = document.getElementById('calText');
+  if(document.activeElement !== ta) ta.value = e.text || '';
+  renderCalendarUrlPreview(e);
+  renderCalendarImages(e);
+}
+function onCalendarTextInput(){
+  const e = calEntry(selectedCalDate, true);
+  e.text = document.getElementById('calText').value;
+  e.updatedAt = new Date().toISOString();
+  renderCalendarUrlPreview(e);
+  clearTimeout(calSaveTimer);
+  calSaveTimer = setTimeout(()=>{
+    cleanCalendarEntry(selectedCalDate);
+    persistCalendar();
+    renderCalendar();
+  }, 300);
+}
+function addCalendarImages(ev){
+  const files = Array.from(ev.target.files || []);
+  if(!files.length) return;
+  const e = calEntry(selectedCalDate, true);
+  files.forEach(file=>{
+    if(!file.type || !file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = () => resizeImage(reader.result, dataUrl=>{
+      e.images = e.images || [];
+      e.images.push(dataUrl);
+      e.updatedAt = new Date().toISOString();
+      persistCalendar();
+      renderCalendar();
+    });
+    reader.readAsDataURL(file);
+  });
+  ev.target.value = '';
+}
+function renderCalendarImages(e){
+  const box = document.getElementById('calImagePreview');
+  if(!box) return;
+  const imgs = Array.isArray(e && e.images) ? e.images : [];
+  box.innerHTML = imgs.map((src,i)=>`<div class="cal-image-item">
+    <img src="${escapeHtml(src)}" alt="カレンダー画像 ${i+1}" draggable="false" onclick="openCalendarImage(${i})">
+    <button type="button" class="cal-image-delete" data-index="${i}" aria-label="画像削除" title="画像削除">×</button>
+  </div>`).join('');
+}
+function removeCalendarImage(i, ev){
+  stopImageDeleteEvent(ev);
+  const e = calEntry(selectedCalDate, false);
+  const idx = Number(i);
+  if(!e || !Array.isArray(e.images) || !Number.isInteger(idx) || idx < 0 || idx >= e.images.length) return false;
+  e.images.splice(idx,1);
+  e.updatedAt = new Date().toISOString();
+  cleanCalendarEntry(selectedCalDate);
+  persistCalendar();
+  renderCalendar();
+  return false;
+}
+function openCalendarImage(i){
+  const e = calEntry(selectedCalDate, false);
+  if(e && e.images && e.images[i]) openLightbox(e.images[i]);
+}
+function deleteCalendarEntry(){
+  if(!calEntry(selectedCalDate, false)) return;
+  if(confirm('この日のカレンダーメモを削除しますか？')){
+    markCalendarEntryDeleted(selectedCalDate);
+    persistCalendar();
+    renderCalendar();
+  }
+}
+
+function toggleFolderMenu(ev){
+  if(ev) ev.stopPropagation();
+  const pop = document.getElementById('folderMenuPop');
+  if(pop) pop.classList.toggle('open');
+}
+function closeFolderMenu(){
+  const pop = document.getElementById('folderMenuPop');
+  if(pop) pop.classList.remove('open');
+}
+function folderMenuAction(action){
+  closeFolderMenu();
+  if(action === 'export') exportNotes();
+  if(action === 'import') document.getElementById('importFile')?.click();
+  if(action === 'starter') addStarterNotes(false);
+  if(action === 'reset') resetNotes();
+}
+document.addEventListener('click', closeFolderMenu);
+function openMenu(){ showScreen('folders'); }
+function exportNotes(){
+  const backup = {version:5, notes, folders, calendarEntries};
+  const blob = new Blob([JSON.stringify(backup,null,2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `colormemo-backup-${dateKey(new Date())}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+function importNotes(e){
+  const f = e.target.files[0];
+  if(!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try{
+      const data = JSON.parse(r.result);
+      const importedNotes = Array.isArray(data) ? data : data.notes;
+      if(!Array.isArray(importedNotes)) throw new Error('bad');
+      notes = importedNotes.map(n=>({
+        id:n.id||uid(), text:n.text||htmlToPlainTextSafe(n.html||''), color:n.color||'white', paper:n.paper||n.paperType||'plain', fontSize:Number(n.fontSize)||20, fontColor:n.fontColor||'#111111', fontBold:!!n.fontBold, fontItalic:!!n.fontItalic,
+        images:Array.isArray(n.images)?n.images:[], drawings:Array.isArray(n.drawings)?n.drawings:[], tables:Array.isArray(n.tables)?n.tables:[], folderId:n.folderId||'',
+        createdAt:n.createdAt||new Date().toISOString(), updatedAt:n.updatedAt||new Date().toISOString()
+      }));
+      if(data && !Array.isArray(data)){
+        folders = Array.isArray(data.folders) ? normalizeFolders(data.folders) : folders;
+        calendarEntries = (data.calendarEntries && typeof data.calendarEntries === 'object') ? data.calendarEntries : calendarEntries;
+      }
+      const validFolderIds = new Set(folders.map(f=>f.id));
+      notes.forEach(n=>{ if(n.folderId && !validFolderIds.has(n.folderId)) n.folderId=''; });
+      persist(); persistFolders(); persistCalendar(); renderAll(); alert('インポートしました');
+    }catch(err){ alert('読み込めませんでした'); }
+  };
+  r.readAsText(f);
+}
+function resetNotes(){
+  if(confirm('すべてのメモを削除しますか？')){
+    notes=[]; persist(); renderAll(); showScreen('list');
+  }
+}
+function renderAll(){ renderList(); renderCalendar(); renderFolderManageList(); renderFolderDashboard(); }
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+function htmlToPlainTextSafe(html){
+  if(!html) return '';
+  const div = document.createElement('div');
+  div.innerHTML = html;
+  return String(div.innerText || div.textContent || '').replace(/\u00A0/g,' ').replace(/\r/g,'').replace(/\n{3,}/g,'\n\n').trimEnd();
+}
+function noteFontSize(n){
+  const v = Number(n && n.fontSize);
+  return [44,34,26,20,16].includes(v) ? v : 20;
+}
+function noteLineHeight(px){
+  if(px >= 44) return 60;
+  if(px >= 34) return 50;
+  if(px >= 26) return 42;
+  if(px >= 20) return 34;
+  return 28;
+}
+function normalizeHexColor(c){
+  return /^#[0-9A-Fa-f]{6}$/.test(String(c||'')) ? String(c) : '#111111';
+}
+function applyEditorTextStyle(n){
+  const ta = document.getElementById('editorText');
+  if(!ta) return;
+  const size = noteFontSize(n);
+  const color = normalizeHexColor(n && n.fontColor);
+  const line = noteLineHeight(size);
+  ta.style.fontSize = size + 'px';
+  ta.style.lineHeight = line + 'px';
+  ta.style.color = color;
+  ta.style.fontWeight = n && n.fontBold ? '800' : '400';
+  ta.style.fontStyle = n && n.fontItalic ? 'italic' : 'normal';
+  ta.style.setProperty('--editor-line-height', line + 'px');
+  const colorBtn = document.getElementById('fontColorBtn');
+  if(colorBtn) colorBtn.style.setProperty('--fc', color);
+  document.getElementById('boldBtn')?.classList.toggle('active', !!(n && n.fontBold));
+  document.getElementById('italicBtn')?.classList.toggle('active', !!(n && n.fontItalic));
+  document.querySelectorAll('.format-size-btn').forEach(b=>b.classList.toggle('active', Number(b.dataset.size)===size));
+  document.querySelectorAll('.format-color-chip').forEach(b=>b.classList.toggle('sel', String(b.dataset.color||'').toLowerCase()===color.toLowerCase()));
+}
+function closeFormatMenus(){
+  document.getElementById('fontSizeMenu')?.classList.remove('open');
+  document.getElementById('fontColorMenu')?.classList.remove('open');
+}
+function openFontSizeMenu(){
+  document.getElementById('fontColorMenu')?.classList.remove('open');
+  document.getElementById('fontSizeMenu')?.classList.toggle('open');
+  applyEditorTextStyle(notes.find(x=>x.id===currentId));
+}
+function openFontColorMenu(){
+  document.getElementById('fontSizeMenu')?.classList.remove('open');
+  document.getElementById('fontColorMenu')?.classList.toggle('open');
+  applyEditorTextStyle(notes.find(x=>x.id===currentId));
+}
+function setFontSize(px){
+  const n = notes.find(x=>x.id===currentId);
+  if(!n) return;
+  n.fontSize = noteFontSize({fontSize:px});
+  n.updatedAt = new Date().toISOString();
+  applyEditorTextStyle(n);
+  persist();
+  closeFormatMenus();
+  document.getElementById('editorDate').textContent = jaDate(n.updatedAt);
+  document.getElementById('saveState').textContent = '保存済み';
+}
+function setFontColor(color){
+  const n = notes.find(x=>x.id===currentId);
+  if(!n) return;
+  n.fontColor = normalizeHexColor(color);
+  n.updatedAt = new Date().toISOString();
+  applyEditorTextStyle(n);
+  persist();
+  closeFormatMenus();
+  document.getElementById('editorDate').textContent = jaDate(n.updatedAt);
+  document.getElementById('saveState').textContent = '保存済み';
+}
+function toggleFontBold(){
+  const n = notes.find(x=>x.id===currentId);
+  if(!n) return;
+  n.fontBold = !n.fontBold;
+  n.updatedAt = new Date().toISOString();
+  applyEditorTextStyle(n);
+  persist();
+  document.getElementById('editorDate').textContent = jaDate(n.updatedAt);
+  document.getElementById('saveState').textContent = '保存済み';
+}
+function toggleFontItalic(){
+  const n = notes.find(x=>x.id===currentId);
+  if(!n) return;
+  n.fontItalic = !n.fontItalic;
+  n.updatedAt = new Date().toISOString();
+  applyEditorTextStyle(n);
+  persist();
+  document.getElementById('editorDate').textContent = jaDate(n.updatedAt);
+  document.getElementById('saveState').textContent = '保存済み';
+}
+document.addEventListener('click', e=>{
+  if(!e.target.closest || (!e.target.closest('#fontSizeMenu') && !e.target.closest('#fontColorMenu') && !e.target.closest('.format-btn'))){
+    closeFormatMenus();
+  }
+});
+
+/* =====================  手書きメモ（ペン・図形・テキスト）  ===================== */
+let drawObjects = [];
+let drawRedoStack = [];
+let drawTool = 'pen';
+let drawColor = '#111111';
+let drawWidth = 6;
+let drawTargetNoteId = null;
+let drawTargetDrawingId = null;
+let drawFromFab = false;
+let drawDocW = 0, drawDocH = 0;
+let drawActive = false;
+let drawCurrent = null;
+let drawCanvas = null, drawCtx = null, drawScaleView = 1, drawDpr = 1;
+let drawTextPoint = null;
+let drawOpenInitToken = 0;
+let drawHasUnsavedChange = false;
+let drawLastTouchTime = 0;
+let drawLastPointerTime = 0;
+let drawInputMode = '';
+
+function normalizeDrawColor(c){
+  const v = String(c || '').trim();
+  return /^#[0-9a-fA-F]{6}$/.test(v) ? v.toLowerCase() : '#111111';
+}
+function syncDrawControls(){
+  drawColor = normalizeDrawColor(drawColor);
+  drawWidth = Math.max(1, Number(drawWidth) || 6);
+  drawTool = drawTool || 'pen';
+  document.querySelectorAll('.draw-color').forEach(btn=>{
+    const c = normalizeDrawColor(btn.getAttribute('data-color') || btn.getAttribute('data-c') || btn.dataset.color || btn.dataset.c || '#111111');
+    btn.dataset.color = c;
+    btn.dataset.c = c;
+    btn.setAttribute('data-color', c);
+    btn.setAttribute('data-c', c);
+    btn.style.setProperty('--draw-color', c);
+    btn.style.backgroundColor = c;
+    btn.classList.toggle('active', c === drawColor);
+    btn.setAttribute('aria-pressed', c === drawColor ? 'true' : 'false');
+  });
+  document.querySelectorAll('.draw-tool').forEach(btn=>{
+    btn.classList.toggle('active', btn.dataset.tool === drawTool);
+    btn.setAttribute('aria-pressed', btn.dataset.tool === drawTool ? 'true' : 'false');
+  });
+  document.querySelectorAll('.draw-width').forEach(btn=>{
+    const active = Number(btn.dataset.w) === drawWidth;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+  });
+  const input = document.getElementById('drawTextInput');
+  const box = document.getElementById('drawTextBox');
+  if(input) input.style.color = drawColor;
+  if(box) box.style.borderColor = drawColor;
+}
+function setDrawTool(t){
+  drawTool = t || 'pen';
+  syncDrawControls();
+  if(drawTool !== 'text') cancelDrawTextBox();
+}
+function setDrawColor(c){
+  drawColor = normalizeDrawColor(c);
+  syncDrawControls();
+}
+function setDrawWidth(w){
+  drawWidth = Math.max(1, Number(w) || 6);
+  syncDrawControls();
+}
+
+function newDrawingNote(){
+  const now = new Date().toISOString();
+  const n = {id:uid(), text:'', color:'white', paper:'plain', fontSize:20, fontColor:'#111111', fontBold:false, fontItalic:false, images:[], drawings:[], tables:[], folderId:(selectedFolder==='all'||selectedFolder==='uncat')?'':selectedFolder, createdAt:now, updatedAt:now};
+  notes.unshift(n);
+  persist();
+  openDrawing(n.id, null, true);
+}
+
+function safeCloneDrawObjects(arr){
+  if(!Array.isArray(arr)) return [];
+  try{ return JSON.parse(JSON.stringify(arr)); }
+  catch(e){ return []; }
+}
+
+function openDrawing(noteId, drawingId, fromFab){
+  const n = notes.find(x=>x.id===noteId);
+  if(!n) return;
+  drawTargetNoteId = noteId;
+  drawTargetDrawingId = drawingId || null;
+  drawFromFab = !!fromFab;
+  drawObjects = [];
+  drawRedoStack = [];
+  drawCurrent = null;
+  drawTextPoint = null;
+  drawActive = false;
+  drawHasUnsavedChange = false;
+  drawInputMode = '';
+  cancelDrawTextBox();
+  const ed = document.getElementById('drawEditor');
+  if(!ed) return;
+  ed.classList.add('open');
+  syncDrawControls();
+  const token = ++drawOpenInitToken;
+  const init = ()=>{
+    if(token !== drawOpenInitToken) return;
+    initDrawingCanvas(n, drawingId, false);
+  };
+  requestAnimationFrame(()=>requestAnimationFrame(init));
+  setTimeout(init, 160);
+}
+
+function initDrawingCanvas(n, drawingId, keepObjects){
+  drawCanvas = document.getElementById('drawCanvas');
+  if(!drawCanvas) return;
+  drawCtx = drawCanvas.getContext && drawCanvas.getContext('2d');
+  if(!drawCtx) return;
+  const wrap = document.getElementById('drawCanvasWrap');
+  drawDpr = Math.min(Math.max(Number(window.devicePixelRatio) || 1, 1), 2);
+  const cw = Math.max(1, Math.round((wrap && wrap.clientWidth) || drawCanvas.clientWidth || window.innerWidth || 360));
+  const ch = Math.max(1, Math.round((wrap && wrap.clientHeight) || drawCanvas.clientHeight || (window.innerHeight - 170) || 520));
+  drawCanvas.width = Math.max(1, Math.round(cw * drawDpr));
+  drawCanvas.height = Math.max(1, Math.round(ch * drawDpr));
+  drawCanvas.style.width = cw + 'px';
+  drawCanvas.style.height = ch + 'px';
+
+  if(keepObjects){
+    drawDocW = drawDocW || cw;
+    drawDocH = drawDocH || ch;
+  }else if(drawingId){
+    const d = ((n && n.drawings) || []).find(x=>x && x.id===drawingId);
+    drawObjects = d ? safeCloneDrawObjects(d.objects) : [];
+    drawDocW = Math.max(1, Number(d && d.w) || cw);
+    drawDocH = Math.max(1, Number(d && d.h) || ch);
+  }else{
+    drawObjects = [];
+    drawDocW = cw;
+    drawDocH = ch;
+  }
+  drawScaleView = Math.min(cw / (drawDocW || cw), ch / (drawDocH || ch));
+  if(!isFinite(drawScaleView) || drawScaleView <= 0) drawScaleView = 1;
+  redrawCanvas();
+}
+
+function eventPoint(e){
+  const t = (e && e.touches && e.touches[0]) || (e && e.changedTouches && e.changedTouches[0]) || e || {};
+  return {clientX:Number(t.clientX)||0, clientY:Number(t.clientY)||0};
+}
+function drawPointFromEvent(e){
+  if(!drawCanvas) drawCanvas = document.getElementById('drawCanvas');
+  if(!drawCanvas) return {x:0,y:0};
+  const r = drawCanvas.getBoundingClientRect();
+  const p = eventPoint(e);
+  const s = drawScaleView || 1;
+  const x = (p.clientX - r.left) / s;
+  const y = (p.clientY - r.top) / s;
+  return {
+    x: Math.max(0, Math.min(drawDocW || x || 0, x || 0)),
+    y: Math.max(0, Math.min(drawDocH || y || 0, y || 0))
+  };
+}
+function preventDrawEvent(e){
+  if(e && e.cancelable) e.preventDefault();
+}
+
+function drawObjectOn(ctx, o){
+  if(!ctx || !o) return;
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.globalAlpha = 1;
+  const color = normalizeDrawColor(o.color || drawColor);
+  const width = Math.max(1, Number(o.width) || drawWidth || 6);
+  if(o.type === 'stroke' || o.type === 'marker' || o.type === 'eraser'){
+    ctx.strokeStyle = o.type === 'eraser' ? '#ffffff' : color;
+    ctx.lineWidth = o.type === 'eraser' ? width * 3.2 : (o.type === 'marker' ? width * 2.6 : width);
+    if(o.type === 'marker') ctx.globalAlpha = 0.38;
+    const pts = Array.isArray(o.points) ? o.points : [];
+    if(pts.length){
+      ctx.beginPath();
+      ctx.moveTo(Number(pts[0].x)||0, Number(pts[0].y)||0);
+      if(pts.length === 1) ctx.lineTo((Number(pts[0].x)||0)+.1, (Number(pts[0].y)||0)+.1);
+      for(let i=1;i<pts.length;i++) ctx.lineTo(Number(pts[i].x)||0, Number(pts[i].y)||0);
+      ctx.stroke();
+    }
+    ctx.restore();
+    return;
+  }
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = width;
+  const x1=Number(o.x1)||0, y1=Number(o.y1)||0, x2=Number(o.x2)||0, y2=Number(o.y2)||0;
+  if(o.type === 'line' || o.type === 'arrow'){
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    if(o.type === 'arrow'){
+      const ang = Math.atan2(y2-y1, x2-x1);
+      const len = Math.max(14, width * 3.5);
+      ctx.beginPath();
+      ctx.moveTo(x2,y2);
+      ctx.lineTo(x2 - len * Math.cos(ang - 0.45), y2 - len * Math.sin(ang - 0.45));
+      ctx.moveTo(x2,y2);
+      ctx.lineTo(x2 - len * Math.cos(ang + 0.45), y2 - len * Math.sin(ang + 0.45));
+      ctx.stroke();
+    }
+  }else if(o.type === 'rect'){
+    ctx.strokeRect(Math.min(x1,x2), Math.min(y1,y2), Math.abs(x2-x1), Math.abs(y2-y1));
+  }else if(o.type === 'ellipse'){
+    ctx.beginPath();
+    ctx.ellipse((x1+x2)/2, (y1+y2)/2, Math.abs(x2-x1)/2 || .5, Math.abs(y2-y1)/2 || .5, 0, 0, Math.PI*2);
+    ctx.stroke();
+  }else if(o.type === 'text'){
+    const size = Math.max(12, Number(o.size)||30);
+    ctx.font = `bold ${size}px -apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif`;
+    ctx.textBaseline = 'top';
+    String(o.text || '').split('\n').forEach((line,i)=>ctx.fillText(line, Number(o.x)||0, (Number(o.y)||0) + i * size * 1.3));
+  }
+  ctx.restore();
+}
+
+function redrawCanvas(){
+  if(!drawCtx || !drawCanvas) return;
+  const ctx = drawCtx;
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.clearRect(0,0,drawCanvas.width,drawCanvas.height);
+  ctx.setTransform(drawDpr * drawScaleView, 0, 0, drawDpr * drawScaleView, 0, 0);
+  drawObjects.forEach(o=>drawObjectOn(ctx, o));
+  if(drawCurrent) drawObjectOn(ctx, drawCurrent);
+}
+
+function openDrawTextBox(p){
+  const box = document.getElementById('drawTextBox');
+  const input = document.getElementById('drawTextInput');
+  const wrap = document.getElementById('drawCanvasWrap');
+  if(!box || !input || !wrap) return;
+  drawTextPoint = p;
+  const left = Math.max(8, Math.min(p.x * (drawScaleView||1), Math.max(8, wrap.clientWidth - 170)));
+  const top = Math.max(8, Math.min(p.y * (drawScaleView||1), Math.max(8, wrap.clientHeight - 110)));
+  box.style.left = left + 'px';
+  box.style.top = top + 'px';
+  input.value = '';
+  const size = drawWidth <= 3 ? 22 : (drawWidth >= 12 ? 44 : 30);
+  input.style.fontSize = size + 'px';
+  input.style.color = drawColor;
+  box.style.borderColor = drawColor;
+  box.classList.add('open');
+  setTimeout(()=>input.focus(), 30);
+}
+function cancelDrawTextBox(){
+  const box = document.getElementById('drawTextBox');
+  const input = document.getElementById('drawTextInput');
+  if(box) box.classList.remove('open');
+  if(input) input.value = '';
+  drawTextPoint = null;
+}
+function commitDrawTextBox(){
+  const input = document.getElementById('drawTextInput');
+  if(!input || !drawTextPoint) return cancelDrawTextBox();
+  const t = input.value.trim();
+  if(t){
+    const size = drawWidth <= 3 ? 22 : (drawWidth >= 12 ? 44 : 30);
+    drawObjects.push({type:'text', x:drawTextPoint.x, y:drawTextPoint.y, text:t, color:drawColor, size});
+    drawRedoStack = [];
+    drawHasUnsavedChange = true;
+    redrawCanvas();
+  }
+  cancelDrawTextBox();
+}
+
+function drawStart(e, mode){
+  const ed = document.getElementById('drawEditor');
+  if(!ed || !ed.classList.contains('open')) return;
+  if(mode === 'mouse' && Date.now() - drawLastTouchTime < 900) return;
+  if(mode === 'touch' && Date.now() - drawLastPointerTime < 350) return;
+  if(e && e.pointerType === 'mouse' && e.button !== 0) return;
+  if(e && e.isPrimary === false) return;
+  preventDrawEvent(e);
+  if(!drawCtx){
+    const n = notes.find(x=>x.id===drawTargetNoteId) || {drawings:[]};
+    initDrawingCanvas(n, drawTargetDrawingId, false);
+  }
+  const p = drawPointFromEvent(e);
+  if(drawTool === 'text'){
+    openDrawTextBox(p);
+    return;
+  }
+  drawActive = true;
+  drawInputMode = mode || 'pointer';
+  drawHasUnsavedChange = true;
+  if(mode === 'touch') drawLastTouchTime = Date.now();
+  if(mode === 'pointer') drawLastPointerTime = Date.now();
+  if(drawCanvas && e && e.pointerId !== undefined){ try{ drawCanvas.setPointerCapture(e.pointerId); }catch(err){} }
+  if(drawTool === 'pen' || drawTool === 'marker' || drawTool === 'eraser'){
+    drawCurrent = {type: drawTool === 'pen' ? 'stroke' : drawTool, color:drawColor, width:drawWidth, points:[p]};
+  }else{
+    drawCurrent = {type:drawTool, color:drawColor, width:drawWidth, x1:p.x, y1:p.y, x2:p.x, y2:p.y};
+  }
+  redrawCanvas();
+}
+function drawMove(e, mode){
+  if(!drawActive || !drawCurrent) return;
+  if(mode && drawInputMode && mode !== drawInputMode) return;
+  if(e && e.pointerType === 'mouse' && e.buttons === 0) return drawEnd(e, mode);
+  preventDrawEvent(e);
+  const p = drawPointFromEvent(e);
+  if(drawCurrent.points){
+    const last = drawCurrent.points[drawCurrent.points.length-1] || p;
+    if(Math.abs(last.x-p.x) + Math.abs(last.y-p.y) > 1) drawCurrent.points.push(p);
+  }else{
+    drawCurrent.x2 = p.x;
+    drawCurrent.y2 = p.y;
+  }
+  redrawCanvas();
+}
+function drawEnd(e, mode){
+  if(!drawActive) return;
+  if(mode && drawInputMode && mode !== drawInputMode) return;
+  preventDrawEvent(e);
+  drawActive = false;
+  if(drawCanvas && e && e.pointerId !== undefined){ try{ drawCanvas.releasePointerCapture(e.pointerId); }catch(err){} }
+  if(drawCurrent){
+    const c = drawCurrent;
+    const tiny = !c.points && Math.abs((c.x2||0)-(c.x1||0)) < 3 && Math.abs((c.y2||0)-(c.y1||0)) < 3;
+    if(!tiny){ drawObjects.push(c); drawRedoStack = []; }
+    drawCurrent = null;
+  }
+  drawInputMode = '';
+  redrawCanvas();
+}
+function drawPointerDown(e){ drawStart(e, 'pointer'); }
+function drawPointerMove(e){ drawMove(e, 'pointer'); }
+function drawPointerUp(e){ drawEnd(e, 'pointer'); }
+function drawTouchStart(e){ drawStart(e, 'touch'); }
+function drawTouchMove(e){ drawMove(e, 'touch'); }
+function drawTouchEnd(e){ drawEnd(e, 'touch'); }
+function drawMouseDown(e){ drawStart(e, 'mouse'); }
+function drawMouseMove(e){ drawMove(e, 'mouse'); }
+function drawMouseUp(e){ drawEnd(e, 'mouse'); }
+
+function drawUndo(){
+  cancelDrawTextBox();
+  if(!drawObjects.length) return;
+  drawRedoStack.push(drawObjects.pop());
+  drawHasUnsavedChange = true;
+  redrawCanvas();
+}
+function drawRedo(){
+  cancelDrawTextBox();
+  if(!drawRedoStack.length) return;
+  drawObjects.push(drawRedoStack.pop());
+  drawHasUnsavedChange = true;
+  redrawCanvas();
+}
+function drawClearAll(){
+  cancelDrawTextBox();
+  if(!drawObjects.length) return;
+  if(confirm('描いたものを全部消しますか？')){
+    drawObjects = [];
+    drawRedoStack = [];
+    drawHasUnsavedChange = true;
+    redrawCanvas();
+  }
+}
+
+function cancelDrawing(){
+  const hasObjects = Array.isArray(drawObjects) && drawObjects.length > 0;
+  if(hasObjects && drawHasUnsavedChange && !confirm('保存せずに閉じますか？（描いた内容は消えます）')) return;
+  closeDrawEditor();
+  if(drawFromFab){
+    const n = notes.find(x=>x.id===drawTargetNoteId);
+    if(n && !(n.text||'').trim() && !(n.images||[]).length && !(n.drawings||[]).length && !(n.tables||[]).length){
+      notes = notes.filter(x=>x.id!==drawTargetNoteId);
+      persist();
+      renderAll();
+    }
+  }
+}
+function closeDrawEditor(){
+  cancelDrawTextBox();
+  const ed = document.getElementById('drawEditor');
+  if(ed) ed.classList.remove('open');
+  drawActive = false;
+  drawCurrent = null;
+  drawInputMode = '';
+  drawOpenInitToken++;
+}
+
+function saveDrawing(){
+  const box = document.getElementById('drawTextBox');
+  if(box && box.classList.contains('open')) commitDrawTextBox();
+  const n = notes.find(x=>x.id===drawTargetNoteId);
+  if(!n){ closeDrawEditor(); return; }
+  if(!drawObjects.length){ cancelDrawing(); return; }
+  const maxSide = 1000;
+  const scale = Math.min(1, maxSide / Math.max(drawDocW || 1, drawDocH || 1));
+  const off = document.createElement('canvas');
+  off.width = Math.max(1, Math.round((drawDocW || 1) * scale));
+  off.height = Math.max(1, Math.round((drawDocH || 1) * scale));
+  const ctx = off.getContext('2d');
+  if(!ctx){ alert('保存できませんでした。もう一度お試しください。'); return; }
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0,0,off.width,off.height);
+  ctx.setTransform(scale,0,0,scale,0,0);
+  drawObjects.forEach(o=>drawObjectOn(ctx, o));
+  let png = '';
+  try{ png = off.toDataURL('image/jpeg', 0.78); }
+  catch(e){ alert('保存できませんでした。画像サイズを小さくしてお試しください。'); return; }
+  n.drawings = Array.isArray(n.drawings) ? n.drawings : [];
+  const payload = {id: drawTargetDrawingId || ('d_'+uid()), png, objects:safeCloneDrawObjects(drawObjects), w:drawDocW || off.width, h:drawDocH || off.height};
+  if(drawTargetDrawingId){
+    const i = n.drawings.findIndex(x=>x && x.id===drawTargetDrawingId);
+    if(i >= 0) n.drawings[i] = payload;
+    else n.drawings.push(payload);
+  }else{
+    n.drawings.push(payload);
+  }
+  n.updatedAt = new Date().toISOString();
+  persist();
+  closeDrawEditor();
+  if(drawFromFab || currentId !== n.id){
+    openNote(n.id);
+  }else{
+    renderDrawingPreview(n);
+    const titleEl = document.getElementById('editorTitle');
+    const dateEl = document.getElementById('editorDate');
+    const saveEl = document.getElementById('saveState');
+    if(titleEl) titleEl.textContent = titleOf(n);
+    if(dateEl) dateEl.textContent = jaDate(n.updatedAt);
+    if(saveEl) saveEl.textContent = '保存済み';
+  }
+  renderList();
+}
+
+function renderDrawingPreview(n){
+  const box = document.getElementById('drawingPreview');
+  if(!box) return;
+  const arr = Array.isArray(n && n.drawings) ? n.drawings : [];
+  box.innerHTML = arr.map((d,i)=>`<div class="drawing-item">
+    <img src="${escapeHtml(d && d.png || '')}" alt="手書きメモ ${i+1}" draggable="false" onclick="openLightbox(notes.find(x=>x.id===currentId).drawings[${i}].png)">
+    <button type="button" class="drawing-edit" onpointerdown="event.stopPropagation()" ontouchstart="event.stopPropagation()" onclick="event.stopPropagation(); openDrawing(currentId, '${escapeHtml(d && d.id || '')}'); return false;">✏️ 編集</button>
+    <button type="button" class="drawing-delete" data-index="${i}" aria-label="手書き削除" title="手書き削除">×</button>
+  </div>`).join('');
+}
+function removeDrawing(i, ev){
+  stopImageDeleteEvent(ev);
+  const n = notes.find(x=>x.id===currentId);
+  const idx = Number(i);
+  if(!n || !Array.isArray(n.drawings) || !Number.isInteger(idx) || idx < 0 || idx >= n.drawings.length) return false;
+  if(!confirm('この手書きメモを削除しますか？')) return false;
+  n.drawings.splice(idx,1);
+  n.updatedAt = new Date().toISOString();
+  persist();
+  renderDrawingPreview(n);
+  renderList();
+  const titleEl = document.getElementById('editorTitle');
+  const dateEl = document.getElementById('editorDate');
+  const saveEl = document.getElementById('saveState');
+  if(titleEl) titleEl.textContent = titleOf(n);
+  if(dateEl) dateEl.textContent = jaDate(n.updatedAt);
+  if(saveEl) saveEl.textContent = '保存済み';
+  return false;
+}
+
+function initDrawEvents(){
+  const c = document.getElementById('drawCanvas');
+  if(c && !c.__drawFullyBound){
+    c.__drawFullyBound = true;
+    c.addEventListener('pointerdown', drawPointerDown, {passive:false});
+    c.addEventListener('pointermove', drawPointerMove, {passive:false});
+    c.addEventListener('pointerup', drawPointerUp, {passive:false});
+    c.addEventListener('pointercancel', drawPointerUp, {passive:false});
+    c.addEventListener('lostpointercapture', drawPointerUp, {passive:false});
+    c.addEventListener('touchstart', drawTouchStart, {passive:false});
+    c.addEventListener('touchmove', drawTouchMove, {passive:false});
+    c.addEventListener('touchend', drawTouchEnd, {passive:false});
+    c.addEventListener('touchcancel', drawTouchEnd, {passive:false});
+    c.addEventListener('mousedown', drawMouseDown, {passive:false});
+    window.addEventListener('mousemove', drawMouseMove, {passive:false});
+    window.addEventListener('mouseup', drawMouseUp, {passive:false});
+  }
+  document.querySelectorAll('.draw-color').forEach(btn=>{
+    if(btn.__drawColorBound) return;
+    btn.__drawColorBound = true;
+    btn.addEventListener('click', e=>{
+      if(e && e.cancelable) e.preventDefault();
+      if(e) e.stopPropagation();
+      setDrawColor(btn.dataset.color || btn.getAttribute('data-color') || btn.getAttribute('data-c'));
+    }, false);
+  });
+  const ti = document.getElementById('drawTextInput');
+  if(ti && !ti.__drawTextBound){
+    ti.__drawTextBound = true;
+    ti.addEventListener('keydown', e=>{
+      if(e.key === 'Escape') cancelDrawTextBox();
+      if((e.ctrlKey || e.metaKey) && e.key === 'Enter') commitDrawTextBox();
+    });
+  }
+  syncDrawControls();
+}
+initDrawEvents();
+window.addEventListener('resize', ()=>{
+  const ed = document.getElementById('drawEditor');
+  if(ed && ed.classList.contains('open') && !drawActive){
+    const n = notes.find(x=>x.id===drawTargetNoteId) || {drawings:[]};
+    initDrawingCanvas(n, drawTargetDrawingId, drawHasUnsavedChange || !drawTargetDrawingId);
+  }
+});
+/* ===================== 手書きここまで ===================== */
+
+
+/* ===================== 表（Excel風）ここから ===================== */
+function addTableToCurrent(){
+  const n = notes.find(x=>x.id===currentId);
+  if(!n) return;
+  n.tables = n.tables || [];
+  // 初期3列×3行（1行目は見出し行）
+  const cols = 3, rows = 3;
+  const grid = [];
+  for(let r=0;r<rows;r++){
+    const row = [];
+    for(let c=0;c<cols;c++) row.push('');
+    grid.push(row);
+  }
+  n.tables.push({id:uid(), grid});
+  n.updatedAt = new Date().toISOString();
+  persist();
+  renderTablePreview(n);
+  document.getElementById('editorDate').textContent = jaDate(n.updatedAt);
+  document.getElementById('saveState').textContent = '保存済み';
+}
+function findTable(n, tid){ return (n.tables||[]).find(t=>t.id===tid); }
+function tableCellInput(tid, r, c, value){
+  const n = notes.find(x=>x.id===currentId);
+  if(!n) return;
+  const t = findTable(n, tid);
+  if(!t) return;
+  if(t.grid[r] && typeof t.grid[r][c] !== 'undefined'){
+    t.grid[r][c] = value;
+    n.updatedAt = new Date().toISOString();
+    document.getElementById('saveState').textContent = '保存中...';
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(()=>{ persist(); document.getElementById('saveState').textContent='保存済み'; }, 350);
+  }
+}
+function tableAddRow(tid){
+  const n = notes.find(x=>x.id===currentId); if(!n) return;
+  const t = findTable(n, tid); if(!t) return;
+  const cols = t.grid[0] ? t.grid[0].length : 1;
+  t.grid.push(new Array(cols).fill(''));
+  n.updatedAt = new Date().toISOString(); persist(); renderTablePreview(n);
+}
+function tableAddCol(tid){
+  const n = notes.find(x=>x.id===currentId); if(!n) return;
+  const t = findTable(n, tid); if(!t) return;
+  t.grid.forEach(row=>row.push(''));
+  n.updatedAt = new Date().toISOString(); persist(); renderTablePreview(n);
+}
+function tableDelRow(tid){
+  const n = notes.find(x=>x.id===currentId); if(!n) return;
+  const t = findTable(n, tid); if(!t) return;
+  if(t.grid.length<=1){ alert('これ以上行を減らせません'); return; }
+  t.grid.pop();
+  n.updatedAt = new Date().toISOString(); persist(); renderTablePreview(n);
+}
+function tableDelCol(tid){
+  const n = notes.find(x=>x.id===currentId); if(!n) return;
+  const t = findTable(n, tid); if(!t) return;
+  if(t.grid[0] && t.grid[0].length<=1){ alert('これ以上列を減らせません'); return; }
+  t.grid.forEach(row=>row.pop());
+  n.updatedAt = new Date().toISOString(); persist(); renderTablePreview(n);
+}
+function removeTable(tid){
+  const n = notes.find(x=>x.id===currentId); if(!n) return;
+  if(!confirm('この表を削除しますか？')) return;
+  n.tables = (n.tables||[]).filter(t=>t.id!==tid);
+  n.updatedAt = new Date().toISOString(); persist();
+  renderTablePreview(n);
+  document.getElementById('editorTitle').textContent = titleOf(n);
+}
+function escAttr(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function renderTablePreview(n){
+  const box = document.getElementById('tablePreview');
+  if(!box) return;
+  const tables = (n && n.tables) || [];
+  box.innerHTML = tables.map(t=>{
+    const rowsHtml = t.grid.map((row,r)=>{
+      const cells = row.map((cell,c)=>
+        `<td><input value="${escAttr(cell)}" oninput="tableCellInput('${t.id}',${r},${c},this.value)" placeholder=""></td>`
+      ).join('');
+      return `<tr>${cells}</tr>`;
+    }).join('');
+    return `<div class="table-block">
+      <div class="table-block-head">
+        <div class="tb-tools">
+          <button onclick="tableAddRow('${t.id}')" title="行を追加">＋行</button>
+          <button onclick="tableAddCol('${t.id}')" title="列を追加">＋列</button>
+          <button onclick="tableDelRow('${t.id}')" title="行を削除">－行</button>
+          <button onclick="tableDelCol('${t.id}')" title="列を削除">－列</button>
+        </div>
+        <button class="tb-del" onclick="removeTable('${t.id}')" title="表を削除">表を削除</button>
+      </div>
+      <div class="table-scroll"><table class="note-table"><tbody>${rowsHtml}</tbody></table></div>
+    </div>`;
+  }).join('');
+}
+/* ===================== 表ここまで ===================== */
+
+
+initSortSelect();
+renderAll();
+clearSearch();
+showScreen('list');
+restoreFromIndexedDBOnStart();
+
+
+/* ===== 画像削除イベント委譲：inline onclick に頼らず確実に削除 ===== */
+let __lastDeleteTapKey = '';
+let __lastDeleteTapTime = 0;
+function handleDelegatedImageDelete(ev){
+  const target = ev && ev.target;
+  const btn = target && target.closest ? target.closest('.image-delete,.cal-image-delete,.drawing-delete') : null;
+  if(!btn) return;
+  stopImageDeleteEvent(ev);
+  const idx = Number(btn.dataset.index);
+  const kind = btn.classList.contains('cal-image-delete') ? 'cal' : (btn.classList.contains('drawing-delete') ? 'drawing' : 'note');
+  const owner = kind === 'cal' ? selectedCalDate : currentId;
+  const key = kind + ':' + owner + ':' + idx;
+  const now = Date.now();
+  if(__lastDeleteTapKey === key && now - __lastDeleteTapTime < 700) return false;
+  __lastDeleteTapKey = key;
+  __lastDeleteTapTime = now;
+  if(kind === 'cal') return removeCalendarImage(idx, ev);
+  if(kind === 'drawing') return removeDrawing(idx, ev);
+  return removeImage(idx, ev);
+}
+function bindImageDeleteDelegates(){
+  if(document.__imageDeleteDelegatesBound) return;
+  document.__imageDeleteDelegatesBound = true;
+  document.addEventListener('pointerdown', function(ev){
+    const target = ev && ev.target;
+    const btn = target && target.closest ? target.closest('.image-delete,.cal-image-delete,.drawing-delete') : null;
+    if(btn) stopImageDeleteEvent(ev);
+  }, true);
+  document.addEventListener('pointerup', handleDelegatedImageDelete, true);
+  document.addEventListener('click', handleDelegatedImageDelete, true);
+  document.addEventListener('touchstart', function(ev){
+    const target = ev && ev.target;
+    const btn = target && target.closest ? target.closest('.image-delete,.cal-image-delete,.drawing-delete') : null;
+    if(btn) stopImageDeleteEvent(ev);
+  }, {capture:true, passive:false});
+  document.addEventListener('touchend', handleDelegatedImageDelete, {capture:true, passive:false});
+}
+
+bindImageDeleteDelegates();
+</script>
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("./sw.js").catch(function (error) {
+      console.log("Service worker registration failed:", error);
+    });
+  });
+}
+</script>
+
+</body>
+</html>
